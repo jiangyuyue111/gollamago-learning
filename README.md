@@ -1,117 +1,51 @@
-# 九源 x MXMACA 高性能算子开发实战营
+# Llama 算子练习仓库
 
-本仓库提供 Llama 3 推理脚手架、PyTorch 性能基线、TileLang 示例算子、MXMACA
-原生示例算子，以及九齿算子的统一接入点。后端选择会真正进入 Llama 算子调用链，缺失
-实现时直接报错，不会静默回退 PyTorch。
+这是一个小型 Llama 推理项目，用来练习 PyTorch、TileLang 和 MXMACA 算子。
+模型已经接好统一的算子调用流程，学员主要编写 kernel。
 
-## 学习任务
+## 快速开始
 
-从九齿、TileLang、MXMACA 中选择至少两种实现方式，实现并优化至少两个算子。
-至少一个算子必须集成到本仓库的 Llama 推理流程。
-
-提交内容必须包含：
-
-1. 算子源码和构建说明；
-2. 与 PyTorch reference 对齐的正确性测试；
-3. 独立算子和端到端 Llama 推理性能数据；
-4. 优化方法、测试环境和复现命令；
-5. 相同输入下的生成 token IDs。
-
-## 健韬负责事项
-
-下表只列任务表中 Owner 为“健韬”或“嘉成 + 健韬”的事项。
-
-| 原序号 | 负责方式 | 任务 | 实现位置 | 如何使用或验收 | 状态 |
-|---|---|---|---|---|---|
-| 2 | 独立负责 | 支持 MXMACA 后端 | `backends.py`、`infer.py`、`tests/test_backends.py` | 推理时传入 `--target maca --device cuda`；使用 `--backend torch`、`tilelang` 或 `maca_cpp` 选择实现。详见[后端与硬件 target](#后端与硬件-target)。 | 已完成 |
-| 5 | 独立负责 | 预留 MXMACA 算子接入点，并提供可构建的原生 `.maca` 示例 | `operators/maca_cpp/__init__.py`、`setup.py`、`src/`、`README.md` | 先运行 `python operators/maca_cpp/setup.py build_ext --inplace`，再使用 `--backend maca_cpp --target maca`。详见[MXMACA 原生示例](#mxmaca-原生示例)。 | 已完成 |
-| 6 | 独立负责 | 提供 TileLang 算子示例 | `operators/tilelang_ops.py`、`tests/test_backend_integration.py`、`llama.py` | 使用 `--backend tilelang --target maca` 运行；执行 `RUN_ACCELERATOR_TESTS=1 pytest -m accelerator -k tilelang` 验证。详见[TileLang 示例](#tilelang-示例)。 | 已完成 |
-| 10 | 共同负责 | 明确学习任务并提供 Llama 集成框架 | `operators/registry.py`、`operators/torch_ops.py`、`llama.py` | 新实现调用 `register_operator(backend, name, implementation)` 注册统一接口，再通过 `infer.py --backend <name>` 进行 Llama 端到端验证。 | 已完成 |
-| 11 | 共同负责 | 提供基线数据和性能计算方式 | `infer.py`、`benchmarks/compare_results.py`、`benchmarks/results/` | 按固定参数运行 Torch、TileLang、MXMACA，再用比较器校验条件和 token IDs。详见[正式性能测试](#正式性能测试)。 | 已完成 |
-
-示例只实现统一算子接口 `rms_norm(input, weight, eps)`。完整加速器
-验收命令为：
-
-```shell
-python operators/maca_cpp/setup.py build_ext --inplace
-RUN_ACCELERATOR_TESTS=1 pytest -q
-```
-
-当前 MetaX C500 环境结果见[正确性测试](#正确性测试)。
-
-## 仓库结构
-
-```text
-infer.py                         推理和端到端性能入口
-llama.py                         基础 Llama 3 模型
-backends.py                      实现后端与硬件 target 配置
-operators/registry.py            统一算子注册和分发
-operators/torch_ops.py           PyTorch reference
-operators/tilelang_ops.py        TileLang RMSNorm 示例
-operators/maca_cpp/              MXMACA 原生 .maca RMSNorm 及构建脚本
-operators/jiuchi/                九齿扩展接入点
-benchmarks/                      基线协议和结果比较工具
-tests/                           单元测试和加速器测试
-```
-
-当前接入模型的统一算子签名为：
-
-```python
-rms_norm(input, weight, eps) -> output
-```
-
-新增实现需通过 `operators.register_operator()` 注册相同签名。具体扩展约定见
-`operators/maca_cpp/README.md` 和 `operators/jiuchi/README.md`。
-
-## 安装与模型下载
+安装依赖：
 
 ```shell
 python -m pip install -r requirements.txt
 ```
 
-`meta-llama/Llama-3.2-1B` 是受限模型。先在 Hugging Face 模型页面接受许可，创建
-read token 并登录：
+CPU 冒烟测试（不需要模型）：
 
 ```shell
-hf auth login
-hf download meta-llama/Llama-3.2-1B --local-dir models/Llama-3.2-1B
+pytest
 ```
 
-不要把 token 或下载的权重提交到仓库。
-
-## 后端与硬件 target
-
-`--backend` 表示算子实现方式：
-
-| 参数 | 实现 |
-|---|---|
-| `torch` | PyTorch reference 和基线 |
-| `tilelang` | 仓库提供的 TileLang 示例 |
-| `maca_cpp` | 仓库提供的 MXMACA 原生 `.maca` 扩展 |
-| `jiuchi` | 学员提供的 `jiuchi_kernels` 包 |
-
-`--target` 表示编译/运行平台，可选 `auto`、`cuda`、`maca`。MACA 版 PyTorch
-通过 CUDA 兼容接口提供设备，因此 MXMACA 上仍使用 `--device cuda`。
-
-`backends.py` 会根据 `torch.version.maca` 自动识别 MACA 环境，将 `maca` target
-传给 TileLang，并限制 `maca_cpp` 只能在 MACA target 下运行。推理计时前后会同步
-设备；自定义后端缺少算子时直接报错，不会静默回退 PyTorch。
-
-PyTorch 基线：
+需要模型时，先下载 `meta-llama/Llama-3.2-1B` 到 `models/Llama-3.2-1B`，再运行：
 
 ```shell
 python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
-  --max-new-tokens 1 --backend torch --target maca --device cuda
+  --max-new-tokens 1 --backend torch --device cpu
 ```
 
-在 MXMACA 上运行 TileLang 示例：
+## 选择后端
+
+`--backend` 决定使用哪份算子代码：
+
+| 后端 | 用途 |
+|---|---|
+| `torch` | 参考实现和 CPU 基线 |
+| `tilelang` | TileLang kernel |
+| `maca_cpp` | MXMACA `.maca` kernel |
+| `NineToothed` |  |
+
+`--target` 可选 `auto`、`cuda`、`maca`。MACA 版 PyTorch 仍使用 `--device cuda`。
+如果后端、target、扩展或某个算子不可用，或者 kernel 运行出错，框架会打印警告并自动使用 PyTorch。
+
+TileLang：
 
 ```shell
 python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
   --max-new-tokens 1 --backend tilelang --target maca --device cuda
 ```
 
-构建并运行 MXMACA 原生示例：
+MXMACA 原生扩展先构建：
 
 ```shell
 python operators/maca_cpp/setup.py build_ext --inplace
@@ -119,109 +53,64 @@ python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
   --max-new-tokens 1 --backend maca_cpp --target maca --device cuda
 ```
 
-在 NVIDIA GPU 上只需把 `--target maca` 改为 `--target cuda`。也可以使用
-`--target auto` 自动检测。纯 CPU 冒烟测试使用 `--backend torch --device cpu`。
+## 学员要改什么
 
-以上生成 1 个 token 且没有 warmup 的命令只用于确认后端能加载、kernel 能编译、
-Llama 能生成结果。TileLang 首次调用包含 JIT 编译时间，不能使用冒烟结果评价性能。
+框架已经预置 `rms_norm` 和 `rope` 的调用、注册和测试入口。RoPE 的接口是：
 
-## TileLang 示例
-
-`operators/tilelang_ops.py` 包含一个可运行示例：
-
-- RMSNorm：展示分块读取、FP32 reduction 和权重融合；
-
-该算子替换 `llama.RMSNorm.forward()` 中的 PyTorch 计算。MLP 仍使用 PyTorch 的
-SiLU 和逐元素乘法。TileLang 在首次使用时 JIT 编译，编译时间不计入预热后的性能样本。
-
-## MXMACA 原生示例
-
-`operators/maca_cpp/` 提供可构建的 BF16 扩展源码：
-
-- RMSNorm：每行一个 block，使用 FP32 shared-memory reduction，并融合权重乘法；
-- device kernel 位于 `src/rms_norm.maca`，使用 MXMACA 类型、runtime 和 launch 语法；
-- `setup.py` 直接调用 `mxcc -x maca -offload-arch` 编译 `.maca` 源码；
-- kernel 使用 PyTorch 当前 CUDA/MACA stream；
-- 输入检查要求连续 BF16 tensor，并保持输出 shape、dtype 和 device；
-- 为保持端到端生成 token 一致，kernel 显式保留 PyTorch reference 的 BF16 舍入边界。
-
-构建命令必须从仓库根目录执行：
-
-```shell
-python operators/maca_cpp/setup.py build_ext --inplace
+```python
+rope(input, sin_table, cos_table) -> output
 ```
 
-生成的 `build/` 和 `*.so` 是本机编译产物，不应提交。完整接口和构建说明见
-`operators/maca_cpp/README.md`。
+学员只需要实现对应的 TileLang 或 MXMACA kernel，不需要修改 `llama.py`、注册表或
+命令行。还没有实现的槽位会暂时使用 PyTorch reference 并打印警告，所以示例可以直接
+跑通；这种状态不能用于性能结论。完整说明见 [`operators/INTEGRATION.md`](operators/INTEGRATION.md)。
 
-## 正确性测试
+## 测试和性能
 
-不需要 GPU 的测试：
+普通测试：检查 PyTorch reference、算子注册、参数校验和结果比较器，不需要 GPU，日常改完代码先运行。
 
 ```shell
-pytest
+pytest -q
 ```
 
-在 CUDA 或 MXMACA 环境运行真实 kernel 编译和数值测试：
+真实加速器测试：在 CUDA/MXMACA 设备上实际编译并运行 TileLang、MXMACA kernel；需要对应硬件和环境变量。
 
 ```shell
 RUN_ACCELERATOR_TESTS=1 pytest -m accelerator
 ```
 
-只验证 MXMACA TileLang：
+正式性能测试统一使用 3 次 warmup、10 次测量，并保持模型、prompt、seed、精度和设备
+完全一致。下面命令假设在 MACA 机器上运行，模型目录是 `models/Llama-3.2-1B`。
 
-```shell
-RUN_ACCELERATOR_TESTS=1 pytest -m accelerator -k tilelang
-```
-
-构建扩展后，只验证 MXMACA 原生实现：
-
-```shell
-python operators/maca_cpp/setup.py build_ext --inplace
-RUN_ACCELERATOR_TESTS=1 pytest -m accelerator -k maca_cpp
-```
-
-TileLang 和 MXMACA 各有一个 RMSNorm 真实加速器测试。其中 MXMACA 算子使用零容差
-与 PyTorch BF16 reference 对齐。当前完整结果为 `17 passed`。
-
-## 正式性能测试
-
-课程统一条件为 BF16、固定模型和 prompt、固定 seed、warmup 3 次、profiling 10 次。
-结果至少记录平均延迟、P50/P90、tokens/s、峰值显存、环境版本及生成 token IDs。
-
-先运行 PyTorch 基线：
+先测 PyTorch 基线：
 
 ```shell
 python infer.py \
   --model models/Llama-3.2-1B \
   --prompts "Hello" \
   --max-new-tokens 64 \
-  --backend torch \
-  --target maca \
-  --device cuda \
+  --backend torch --target maca --device cuda \
   --num-warmup-iterations 3 \
   --num-profiling-iterations 10 \
   --seed 0 \
   --output-json benchmarks/results/torch_maca.json
 ```
 
-使用完全相同条件运行 TileLang：
+再测 TileLang：
 
 ```shell
 python infer.py \
   --model models/Llama-3.2-1B \
   --prompts "Hello" \
   --max-new-tokens 64 \
-  --backend tilelang \
-  --target maca \
-  --device cuda \
+  --backend tilelang --target maca --device cuda \
   --num-warmup-iterations 3 \
   --num-profiling-iterations 10 \
   --seed 0 \
   --output-json benchmarks/results/tilelang_maca.json
 ```
 
-构建扩展后，使用完全相同条件运行 MXMACA 原生实现：
+MXMACA 原生算子需要先构建扩展：
 
 ```shell
 python operators/maca_cpp/setup.py build_ext --inplace
@@ -229,9 +118,7 @@ python infer.py \
   --model models/Llama-3.2-1B \
   --prompts "Hello" \
   --max-new-tokens 64 \
-  --backend maca_cpp \
-  --target maca \
-  --device cuda \
+  --backend maca_cpp --target maca --device cuda \
   --num-warmup-iterations 3 \
   --num-profiling-iterations 10 \
   --seed 0 \
@@ -256,39 +143,21 @@ python benchmarks/compare_results.py \
   --output-json benchmarks/results/torch_vs_maca_cpp_maca.json
 ```
 
-三种实现必须使用相同模型、prompt、精度、设备、seed、batch size、输入长度和生成
-长度。比较器会检查环境字段和生成 token IDs，条件或输出不一致时拒绝比较。三次
-warmup 用于排除 JIT 和运行时初始化，十次 profiling 用于计算稳定统计量。
+比较器会检查测试条件和生成的 token IDs。首次 TileLang 调用包含 JIT 编译，不能直接
+拿第一次运行的时间评价性能。如果 RoPE 还在使用临时 PyTorch reference，也不能把该
+结果当作完整后端性能；应先实现对应 kernel。
 
-计算口径：
+## 目录
 
 ```text
-tokens/s = batch_size * 每条序列生成 token 数 / 平均耗时
-加速比 = 优化版 tokens/s / PyTorch 基线 tokens/s
-性能提升率 = (加速比 - 1) * 100%
+infer.py                         推理入口
+llama.py                         Llama 模型和算子调用点
+backends.py                      后端与 target 配置
+operators/registry.py            算子注册和分发
+operators/torch_ops.py           PyTorch 参考实现
+operators/tilelang_ops.py        TileLang 实现槽位
+operators/maca_cpp/              MXMACA 构建脚本和源码
+operators/INTEGRATION.md         接入教程和推荐练习
+benchmarks/compare_results.py    性能结果比较
+tests/                           单元测试和加速器测试
 ```
-
-2026-08-28 在 MetaX C500、PyTorch `2.8.0+metax3.5.3.9`、MACA `3.5.3.9`
-环境按上述命令测得：
-
-| 实现 | 平均延迟 | P50 | P90 | tokens/s |
-|---|---:|---:|---:|---:|
-| PyTorch 基线 | 714.63 ms | 701.06 ms | 781.44 ms | 89.56 |
-| TileLang 示例 | 1211.28 ms | 1269.09 ms | 1309.44 ms | 52.84 |
-| MXMACA 原生 | 745.07 ms | 733.43 ms | 901.15 ms | 85.90 |
-
-三个后端生成的 64 个 token IDs 完全一致。TileLang 加速比为 `0.590x`，性能提升率
-为 `-41.00%`；MXMACA 原生实现加速比为 `0.959x`，性能提升率为 `-4.08%`。当前示例
-尚未达到课程的 80% 性能要求，仍需继续优化。正式 JSON 位于
-`benchmarks/results/`，更完整的测量协议见 `benchmarks/README.md`。
-
-## 评分
-
-基础要求为性能提升率达到 80%，同时保持输出 token IDs 一致。满足基础要求的提交
-再按课程公布的进阶筛选规则评审。
-
-## 限制条件
-
-性能提升必须来自九齿、TileLang 或 MXMACA 算子实现及合理的算子融合。直接调用
-更高层 PyTorch 融合实现替换作业算子，或通过 KV cache 等系统级改动改变基线工作量，
-不计入本次算子优化成绩。如对改动边界有疑问，应在提交前向课程助教确认。

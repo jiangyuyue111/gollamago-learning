@@ -17,9 +17,46 @@ def test_torch_operators_match_references():
     )
 
 
-def test_missing_operator_does_not_fall_back_to_torch():
-    with pytest.raises(operators.OperatorUnavailableError, match="automatic fallback"):
+def test_torch_rope_matches_half_rotation_reference():
+    input = torch.randn(2, 3, 4, 8)
+    sin = torch.randn(3, 4)
+    cos = torch.randn(3, 4)
+    actual = operators.get_operator("rope", "torch")(input, sin, cos)
+    first, second = input[..., :4], input[..., 4:]
+    expected = torch.cat(
+        ((first * cos[None, :, None] - second * sin[None, :, None]),
+         (first * sin[None, :, None] + second * cos[None, :, None])), dim=-1
+    )
+    torch.testing.assert_close(actual, expected)
+
+
+def test_missing_operator_reports_no_torch_implementation():
+    with pytest.raises(operators.OperatorUnavailableError, match="No torch implementation"):
         operators.get_operator("not_implemented", "torch")
+
+
+def test_unavailable_backend_falls_back_to_torch():
+    with pytest.warns(RuntimeWarning, match="using torch"):
+        implementation = operators.get_operator("rms_norm", "missing_backend")
+    assert implementation is operators.get_operator("rms_norm", "torch")
+
+
+def test_dispatch_falls_back_when_backend_operator_fails():
+    import operators.registry as registry
+
+    original_get_operator = registry.get_operator
+
+    def failing_operator(name, backend=None):
+        if backend == "tilelang":
+            return lambda *args: (_ for _ in ()).throw(RuntimeError("kernel failed"))
+        return original_get_operator(name, backend)
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(registry, "get_operator", failing_operator)
+    with pytest.warns(RuntimeWarning, match="failed.*using torch"):
+        result = operators.dispatch("rms_norm", torch.randn(1, 2, 4), torch.ones(4), 1e-5, backend="tilelang")
+    monkeypatch.undo()
+    assert result.shape == (1, 2, 4)
 
 
 def test_compare_uses_throughput_ratio():

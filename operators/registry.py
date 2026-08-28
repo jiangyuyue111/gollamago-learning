@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import warnings
 from collections.abc import Callable
 
 import backends
@@ -49,15 +50,36 @@ def _load_backend(backend: str) -> None:
 
 def get_operator(name: str, backend: str | None = None) -> Operator:
     selected = backend or backends.get_active_backend(default_to_torch=True).backend
-    _load_backend(selected)
+    try:
+        _load_backend(selected)
+    except OperatorUnavailableError as error:
+        warnings.warn(f"Backend {selected!r} is unavailable ({error}); using torch", RuntimeWarning)
+        selected = "torch"
+        _load_backend(selected)
     try:
         return _OPERATORS[(selected, name)]
     except KeyError as error:
+        if selected != "torch":
+            warnings.warn(
+                f"Backend {selected!r} does not provide {name!r}; using torch",
+                RuntimeWarning,
+            )
+            return get_operator(name, "torch")
         raise OperatorUnavailableError(
-            f"Backend {selected!r} does not provide operator {name!r}; "
-            "automatic fallback to PyTorch is disabled"
+            f"No torch implementation is registered for operator {name!r}"
         ) from error
 
 
 def dispatch(name: str, *args, backend: str | None = None, **kwargs):
-    return get_operator(name, backend)(*args, **kwargs)
+    selected = backend or backends.get_active_backend(default_to_torch=True).backend
+    implementation = get_operator(name, selected)
+    try:
+        return implementation(*args, **kwargs)
+    except Exception as error:
+        if selected == "torch":
+            raise
+        warnings.warn(
+            f"Backend {selected!r} failed for {name!r} ({error}); using torch",
+            RuntimeWarning,
+        )
+        return get_operator(name, "torch")(*args, **kwargs)

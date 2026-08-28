@@ -34,26 +34,30 @@ def test_tilelang_backend_resolves_requested_target():
 
 
 @pytest.mark.parametrize("name", ["tilelang", "maca_cpp", "jiuchi"])
-def test_accelerator_backends_reject_cpu(name):
-    with pytest.raises(RuntimeError, match="CUDA-compatible"):
-        backends.configure_backend(name, "cpu")
+def test_accelerator_backends_fall_back_to_torch_on_cpu(name):
+    with pytest.warns(RuntimeWarning, match="using torch"):
+        config = backends.configure_backend(name, "cpu")
+    assert config.backend == "torch"
 
 
-def test_maca_target_requires_maca_pytorch():
+def test_maca_target_falls_back_without_maca_pytorch():
     with (
         mock.patch.object(torch.cuda, "is_available", return_value=True),
         mock.patch.object(torch.version, "maca", None, create=True),
-        pytest.raises(RuntimeError, match="MACA-enabled PyTorch"),
+        pytest.warns(RuntimeWarning, match="using torch"),
     ):
-        backends.configure_backend("tilelang", "cuda", "maca")
+        config = backends.configure_backend("tilelang", "cuda", "maca")
+    assert config.backend == "torch"
 
 
-def test_maca_cpp_requires_maca_target():
+def test_maca_cpp_falls_back_for_wrong_target():
     with (
         mock.patch.object(torch.cuda, "is_available", return_value=True),
-        pytest.raises(RuntimeError, match="requires --target maca"),
+        mock.patch.object(torch.version, "maca", "3.0", create=True),
+        pytest.warns(RuntimeWarning, match="using torch"),
     ):
-        backends.configure_backend("maca_cpp", "cuda", "cuda")
+        config = backends.configure_backend("maca_cpp", "cuda", "cuda")
+    assert config.backend == "torch"
 
 
 def test_synchronize_handles_indexed_cuda_device():

@@ -64,15 +64,7 @@ class MLP(nn.Module):
 
 
 def apply_rotary_position_embedding(input, sin_table, cos_table):
-    sin_table = sin_table[None, :, None, :]
-    cos_table = cos_table[None, :, None, :]
-
-    input_0 = input[..., : input.shape[-1] // 2]
-    input_1 = input[..., input.shape[-1] // 2 :]
-    input_0_rotated = input_0 * cos_table - input_1 * sin_table
-    input_1_rotated = input_0 * sin_table + input_1 * cos_table
-
-    return torch.cat((input_0_rotated, input_1_rotated), dim=-1)
+    return operators.dispatch("rope", input, sin_table, cos_table)
 
 
 def apply_scaled_dot_product_attention(query, key, value):

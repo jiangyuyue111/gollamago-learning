@@ -1,6 +1,7 @@
 """TileLang RMSNorm example."""
 
 import functools
+import warnings
 
 import torch
 
@@ -88,3 +89,19 @@ def rms_norm(input: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Ten
 
 
 register_operator("tilelang", "rms_norm", rms_norm)
+
+
+def rope(input: torch.Tensor, sin_table: torch.Tensor, cos_table: torch.Tensor) -> torch.Tensor:
+    """Temporary reference path until a student supplies the TileLang kernel."""
+    warnings.warn(
+        "TileLang rope is not implemented; using the PyTorch reference. "
+        "Replace operators.tilelang_ops.rope for performance work.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+    from .torch_ops import rope as torch_rope
+
+    return torch_rope(input, sin_table, cos_table)
+
+
+register_operator("tilelang", "rope", rope)
