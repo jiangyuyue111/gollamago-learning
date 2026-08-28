@@ -1,0 +1,14 @@
+// MXMACA RoPE kernel exercise.
+// The launch entry point is intentionally a stub. Implement the device kernel
+// and replace the return value once the kernel is ready.
+#include <cstdint>
+
+extern "C" int launch_rope_bf16(const void* input, const void* sin_table,
+                                  const void* cos_table, void* output,
+                                  int64_t batch, int64_t sequence, int64_t heads,
+                                  int64_t head_dim, void* stream) {
+  (void)input; (void)sin_table; (void)cos_table; (void)output;
+  (void)batch; (void)sequence; (void)heads; (void)head_dim; (void)stream;
+  // TODO(student): launch the MXMACA RoPE device kernel here.
+  return 1;
+}

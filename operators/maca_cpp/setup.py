@@ -8,7 +8,7 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 ROOT = Path(__file__).parent
 MACA_SOURCE = ROOT / "src" / "rms_norm.maca"
-OPTIONAL_MACA_SOURCES = [ROOT / "src" / "rope.maca"]
+OPTIONAL_MACA_SOURCES = [ROOT / "src" / "rope" / "rope.maca"]
 
 
 class MXMACABuildExtension(BuildExtension):

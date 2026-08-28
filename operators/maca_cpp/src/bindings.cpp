@@ -5,6 +5,10 @@
 extern "C" int launch_rms_norm_bf16(const void* input, const void* weight,
                                      void* output, int64_t rows,
                                      int64_t columns, float eps, void* stream);
+extern "C" int launch_rope_bf16(const void* input, const void* sin_table,
+                                 const void* cos_table, void* output,
+                                 int64_t batch, int64_t sequence, int64_t heads,
+                                 int64_t head_dim, void* stream);
 
 namespace {
 
@@ -39,8 +43,36 @@ torch::Tensor rms_norm(torch::Tensor input, torch::Tensor weight, double eps) {
   return output;
 }
 
+torch::Tensor rope(torch::Tensor input, torch::Tensor sin_table,
+                   torch::Tensor cos_table) {
+  check_maca_tensor(input, "input");
+  check_maca_tensor(sin_table, "sin_table");
+  check_maca_tensor(cos_table, "cos_table");
+  TORCH_CHECK(input.dim() == 4, "input must have shape [batch, sequence, heads, head_dim]");
+  TORCH_CHECK(sin_table.dim() == 2 && cos_table.dim() == 2,
+              "RoPE tables must be two-dimensional");
+  TORCH_CHECK(sin_table.sizes() == cos_table.sizes(),
+              "RoPE tables must have the same shape");
+  TORCH_CHECK(input.size(1) <= sin_table.size(0), "RoPE tables are too short");
+  TORCH_CHECK(input.size(3) % 2 == 0 && sin_table.size(1) == input.size(3) / 2,
+              "RoPE table width must equal head_dim / 2");
+  TORCH_CHECK(input.device() == sin_table.device() && input.device() == cos_table.device(),
+              "RoPE tensors must be on the same device");
+
+  c10::cuda::CUDAGuard device_guard(input.device());
+  auto output = torch::empty_like(input);
+  auto stream = at::cuda::getCurrentCUDAStream(input.get_device());
+  const int status = launch_rope_bf16(
+      input.data_ptr(), sin_table.data_ptr(), cos_table.data_ptr(), output.data_ptr(),
+      input.size(0), input.size(1), input.size(2), input.size(3),
+      reinterpret_cast<void*>(stream.stream()));
+  TORCH_CHECK(status == 0, "MXMACA RoPE launch failed with error ", status);
+  return output;
+}
+
 }  // namespace
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
   module.def("rms_norm", &rms_norm, "MXMACA BF16 RMSNorm");
+  module.def("rope", &rope, "MXMACA BF16 RoPE");
 }
