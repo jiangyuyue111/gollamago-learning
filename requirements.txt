@@ -1,2 +1,9 @@
 torch
 transformers
+safetensors
+pytest
+huggingface_hub[cli]
+
+# Optional: required only by --backend tilelang. The bundled MACA C++ backend
+# is built separately; Jiuchi uses a student-provided extension.
+# tilelang

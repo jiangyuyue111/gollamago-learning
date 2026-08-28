@@ -1,0 +1,9 @@
+{
+  "baseline_backend": "torch",
+  "candidate_backend": "tilelang",
+  "baseline_tokens_per_second": 88.0160095755266,
+  "candidate_tokens_per_second": 63.8942009084401,
+  "speedup": 0.7259383970777775,
+  "improvement_percent": -27.406160292222246,
+  "output_tokens_match": true
+}

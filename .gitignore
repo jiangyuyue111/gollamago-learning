@@ -159,6 +159,12 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# Downloaded model weights
+models/
+
+# One-off end-to-end checks; formal benchmark results are committed.
+benchmarks/results/*_smoke.json
+
 # Pyre type checker
 .pyre/
 

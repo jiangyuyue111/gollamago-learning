@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 from safetensors.torch import load_file
 
+import operators
+
 
 @dataclasses.dataclass
 class ModelConfig:
@@ -40,11 +42,7 @@ class RMSNorm(nn.Module):
         self.eps = eps
 
     def forward(self, input):
-        return (
-            input
-            * torch.rsqrt(input.pow(2).mean(dim=-1, keepdim=True) + self.eps)
-            * self.weight
-        )
+        return operators.dispatch("rms_norm", input, self.weight, self.eps)
 
 
 class MLP(nn.Module):
@@ -60,7 +58,9 @@ class MLP(nn.Module):
         self.silu = nn.SiLU()
 
     def forward(self, input):
-        return self.down_proj(self.silu(self.gate_proj(input)) * self.up_proj(input))
+        gate = self.gate_proj(input)
+        up = self.up_proj(input)
+        return self.down_proj(operators.dispatch("silu_mul", gate, up))
 
 
 def apply_rotary_position_embedding(input, sin_table, cos_table):
