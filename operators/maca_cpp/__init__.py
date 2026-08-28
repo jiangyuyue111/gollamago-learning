@@ -18,7 +18,7 @@ from operators.registry import register_operator
 register_operator("maca_cpp", "rms_norm", maca_kernels.rms_norm)
 
 
-def rope(*args, **kwargs):
+def _torch_rope_fallback(*args, **kwargs):
     """Temporary reference path until a student adds the native RoPE kernel."""
     warnings.warn(
         "MXMACA rope is not implemented; using the PyTorch reference. "
@@ -31,4 +31,6 @@ def rope(*args, **kwargs):
     return torch_rope(*args, **kwargs)
 
 
-register_operator("maca_cpp", "rope", rope)
+# Once a student exposes maca_kernels.rope, it is picked up automatically. Until then,
+# the already-connected model path remains runnable through the Torch reference.
+register_operator("maca_cpp", "rope", getattr(maca_kernels, "rope", _torch_rope_fallback))

@@ -8,6 +8,7 @@ from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 ROOT = Path(__file__).parent
 MACA_SOURCE = ROOT / "src" / "rms_norm.maca"
+OPTIONAL_MACA_SOURCES = [ROOT / "src" / "rope.maca"]
 
 
 class MXMACABuildExtension(BuildExtension):
@@ -42,11 +43,21 @@ class MXMACABuildExtension(BuildExtension):
             ],
             check=True,
         )
+        objects = [str(maca_object)]
+        for source in OPTIONAL_MACA_SOURCES:
+            if source.is_file():
+                optional_object = object_dir / f"{source.stem}.o"
+                subprocess.run(
+                    [
+                        str(mxcc), "-x", "maca", "-O3", "-fPIC", "-std=c++17",
+                        "-offload-arch", os.environ.get("MACA_ARCH", "native"),
+                        f"--maca-path={maca_path}", "-c", str(source), "-o", str(optional_object),
+                    ],
+                    check=True,
+                )
+                objects.append(str(optional_object))
         for extension in self.extensions:
-            extension.extra_objects = [
-                *getattr(extension, "extra_objects", []),
-                str(maca_object),
-            ]
+            extension.extra_objects = [*getattr(extension, "extra_objects", []), *objects]
         super().build_extensions()
 
 

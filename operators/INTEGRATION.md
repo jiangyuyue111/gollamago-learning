@@ -107,8 +107,16 @@ from . import maca_kernels
 register_operator("maca_cpp", "my_op", maca_kernels.my_op)
 ```
 
-RoPE 的 `maca_cpp` 注册槽位也已预置。学员只需在 `src/` 增加 `rope.maca`、在
-`bindings.cpp` 暴露 `maca_kernels.rope`，再将 `__init__.py` 中的临时 reference 函数替换为该函数。
+RoPE 的 `maca_cpp` 注册槽位也已预置。当前没有 `maca_kernels.rope` 时自动使用 PyTorch；
+学员只需完成两件事：
+
+1. 在 `src/rope.maca` 实现 kernel 和 launch 函数。`setup.py` 会自动发现该文件并编译，
+   不需要修改构建脚本。
+2. 在 `bindings.cpp` 增加 `extern` 声明、参数检查、输出分配和 Python 绑定
+   `module.def("rope", &rope, "MXMACA RoPE")`。重新构建后，`__init__.py` 会自动发现
+   `maca_kernels.rope`，不需要修改注册代码。
+
+本仓库不提供 `rope.maca` 的实现，学员只需填写上述 kernel 和 binding 部分。
 
 构建和验证：
 
