@@ -60,7 +60,7 @@ class MLP(nn.Module):
     def forward(self, input):
         gate = self.gate_proj(input)
         up = self.up_proj(input)
-        return self.down_proj(operators.dispatch("silu_mul", gate, up))
+        return self.down_proj(self.silu(gate) * up)
 
 
 def apply_rotary_position_embedding(input, sin_table, cos_table):

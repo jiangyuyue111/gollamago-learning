@@ -1,4 +1,4 @@
-"""TileLang RMSNorm and fused SiLU-multiply examples."""
+"""TileLang RMSNorm example."""
 
 import functools
 
@@ -30,33 +30,6 @@ def _target() -> str:
 
 
 @functools.lru_cache(maxsize=None)
-def _compile_silu_mul(dtype: str, target: str):
-    import tilelang
-    import tilelang.language as T
-
-    length = T.dynamic("length")
-    block = 256
-
-    @tilelang.jit(target=target, out_idx=[-1])
-    def kernel():
-        @T.prim_func
-        def main(
-            gate: T.Tensor((length,), dtype),
-            up: T.Tensor((length,), dtype),
-            output: T.Tensor((length,), dtype),
-        ):
-            with T.Kernel(T.ceildiv(length, block), threads=block) as block_id:
-                for offset in T.Parallel(block):
-                    index = block_id * block + offset
-                    if index < length:
-                        output[index] = gate[index] * T.sigmoid(gate[index]) * up[index]
-
-        return main
-
-    return kernel()
-
-
-@functools.lru_cache(maxsize=None)
 def _compile_rms_norm(columns: int, eps: float, dtype: str, target: str):
     import tilelang
     import tilelang.language as T
@@ -76,6 +49,8 @@ def _compile_rms_norm(columns: int, eps: float, dtype: str, target: str):
                 input_shared = T.alloc_shared((block_columns,), dtype)
                 square_fragment = T.alloc_fragment((block_columns,), T.float32)
                 square_sum = T.alloc_fragment((1,), T.float32)
+                mean = T.alloc_fragment((1,), dtype)
+                inverse_rms = T.alloc_fragment((1,), dtype)
 
                 T.clear(square_fragment)
                 for chunk in range(T.ceildiv(columns, block_columns)):
@@ -86,28 +61,20 @@ def _compile_rms_norm(columns: int, eps: float, dtype: str, target: str):
                         )
 
                 T.reduce_sum(square_fragment, square_sum, dim=0)
-                square_sum[0] = T.rsqrt(square_sum[0] / columns + eps)
+                mean[0] = square_sum[0] / columns
+                inverse_rms[0] = T.rsqrt(mean[0] + eps)
 
                 for chunk in range(T.ceildiv(columns, block_columns)):
                     for offset in T.Parallel(block_columns):
                         index = chunk * block_columns + offset
                         if index < columns:
-                            output[row, index] = (
-                                input[row, index] * square_sum[0] * weight[index]
-                            )
+                            output[row, index] = T.cast(
+                                input[row, index] * inverse_rms[0], dtype
+                            ) * weight[index]
 
         return main
 
     return kernel()
-
-
-def silu_mul(gate: torch.Tensor, up: torch.Tensor) -> torch.Tensor:
-    if gate.shape != up.shape:
-        raise ValueError("gate and up must have identical shapes")
-    if not gate.is_contiguous() or not up.is_contiguous():
-        raise ValueError("TileLang silu_mul expects contiguous tensors")
-    kernel = _compile_silu_mul(_tilelang_dtype(gate.dtype), _target())
-    return kernel(gate.reshape(-1), up.reshape(-1)).reshape(gate.shape)
 
 
 def rms_norm(input: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
@@ -121,4 +88,3 @@ def rms_norm(input: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Ten
 
 
 register_operator("tilelang", "rms_norm", rms_norm)
-register_operator("tilelang", "silu_mul", silu_mul)

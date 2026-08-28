@@ -4,7 +4,6 @@
 
 ```python
 rms_norm(input, weight, eps) -> output
-silu_mul(gate, up) -> output
 ```
 
 算子必须保持输入的 shape、dtype 和 device。仓库不会静默回退 PyTorch，缺失

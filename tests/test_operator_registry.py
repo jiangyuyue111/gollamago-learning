@@ -8,17 +8,13 @@ from benchmarks.compare_results import compare
 def test_torch_operators_match_references():
     input = torch.randn(2, 3, 8)
     weight = torch.randn(8)
-    gate = torch.randn(2, 3, 8)
-    up = torch.randn_like(gate)
 
     rms = operators.get_operator("rms_norm", "torch")
-    silu_mul = operators.get_operator("silu_mul", "torch")
 
     torch.testing.assert_close(
         rms(input, weight, 1e-5),
         input * torch.rsqrt(input.pow(2).mean(-1, keepdim=True) + 1e-5) * weight,
     )
-    torch.testing.assert_close(silu_mul(gate, up), torch.nn.functional.silu(gate) * up)
 
 
 def test_missing_operator_does_not_fall_back_to_torch():

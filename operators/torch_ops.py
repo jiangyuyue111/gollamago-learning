@@ -9,9 +9,4 @@ def rms_norm(input: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Ten
     return input * torch.rsqrt(input.pow(2).mean(dim=-1, keepdim=True) + eps) * weight
 
 
-def silu_mul(gate: torch.Tensor, up: torch.Tensor) -> torch.Tensor:
-    return torch.nn.functional.silu(gate) * up
-
-
 register_operator("torch", "rms_norm", rms_norm)
-register_operator("torch", "silu_mul", silu_mul)

@@ -1,4 +1,4 @@
-"""Registration adapter for the bundled MXMACA C++ extension."""
+"""Registration adapter for the bundled native MXMACA extension."""
 
 try:
     from . import maca_kernels
@@ -14,4 +14,3 @@ from operators.registry import register_operator
 
 
 register_operator("maca_cpp", "rms_norm", maca_kernels.rms_norm)
-register_operator("maca_cpp", "silu_mul", maca_kernels.silu_mul)

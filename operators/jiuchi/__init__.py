@@ -14,4 +14,3 @@ from operators.registry import register_operator
 
 
 register_operator("jiuchi", "rms_norm", jiuchi_kernels.rms_norm)
-register_operator("jiuchi", "silu_mul", jiuchi_kernels.silu_mul)

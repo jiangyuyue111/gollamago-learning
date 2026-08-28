@@ -1,0 +1,77 @@
+#include <common/maca_bfloat16.h>
+#include <mc_runtime.h>
+
+#include <cstdint>
+
+namespace {
+
+constexpr int kNormThreads = 128;
+constexpr int kReductionWidth = 512;
+
+__global__ void rms_norm_bf16_kernel(const maca_bfloat16* input,
+                                     const maca_bfloat16* weight,
+                                     maca_bfloat16* output,
+                                     int64_t columns,
+                                     float eps) {
+  __shared__ float reduction[kReductionWidth];
+  const int64_t row_offset = static_cast<int64_t>(blockIdx.x) * columns;
+
+  for (int offset = threadIdx.x; offset < kReductionWidth; offset += blockDim.x) {
+    float square_sum = 0.0f;
+    for (int64_t chunk = 0; chunk * kReductionWidth < columns; ++chunk) {
+      const int64_t column = chunk * kReductionWidth + offset;
+      if (column < columns) {
+        const float value = __bfloat162float(input[row_offset + column]);
+        const maca_bfloat16 square = __float2bfloat16_rn(value * value);
+        square_sum += __bfloat162float(square);
+      }
+    }
+    reduction[offset] = square_sum;
+  }
+  __syncthreads();
+
+  for (int stride = kReductionWidth / 2; stride > 0; stride /= 2) {
+    for (int offset = threadIdx.x; offset < stride; offset += blockDim.x) {
+      reduction[offset] += reduction[offset + stride];
+    }
+    __syncthreads();
+  }
+
+  const maca_bfloat16 mean =
+      __float2bfloat16_rn(reduction[0] / static_cast<float>(columns));
+  const maca_bfloat16 inverse_rms =
+      __float2bfloat16_rn(rsqrtf(__bfloat162float(mean) + eps));
+  for (int offset = threadIdx.x; offset < kReductionWidth; offset += blockDim.x) {
+    for (int64_t chunk = 0; chunk * kReductionWidth < columns; ++chunk) {
+      const int64_t column = chunk * kReductionWidth + offset;
+      if (column < columns) {
+        const float value = __bfloat162float(input[row_offset + column]);
+        const float scale = __bfloat162float(weight[column]);
+        const maca_bfloat16 normalized =
+            __float2bfloat16_rn(value * __bfloat162float(inverse_rms));
+        output[row_offset + column] =
+            __float2bfloat16_rn(__bfloat162float(normalized) * scale);
+      }
+    }
+  }
+}
+
+}  // namespace
+
+extern "C" int launch_rms_norm_bf16(const void* input,
+                                     const void* weight,
+                                     void* output,
+                                     int64_t rows,
+                                     int64_t columns,
+                                     float eps,
+                                     void* stream) {
+  if (rows == 0) {
+    return static_cast<int>(mcSuccess);
+  }
+  rms_norm_bf16_kernel<<<static_cast<unsigned int>(rows), kNormThreads, 0,
+                         reinterpret_cast<mcStream_t>(stream)>>>(
+      static_cast<const maca_bfloat16*>(input),
+      static_cast<const maca_bfloat16*>(weight),
+      static_cast<maca_bfloat16*>(output), columns, eps);
+  return static_cast<int>(mcGetLastError());
+}

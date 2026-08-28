@@ -15,19 +15,6 @@ def require_accelerator_tests():
         pytest.skip("set RUN_ACCELERATOR_TESTS=1 to run accelerator tests")
 
 
-def test_tilelang_silu_mul_on_detected_accelerator():
-    require_accelerator_tests()
-    backends.configure_backend("tilelang", "cuda", "auto")
-    gate = torch.randn(2, 3, 2048, device="cuda", dtype=torch.bfloat16)
-    up = torch.randn_like(gate)
-
-    actual = operators.dispatch("silu_mul", gate, up)
-
-    torch.testing.assert_close(
-        actual, torch.nn.functional.silu(gate) * up, rtol=0.02, atol=0.07
-    )
-
-
 def test_tilelang_rms_norm_on_detected_accelerator():
     require_accelerator_tests()
     backends.configure_backend("tilelang", "cuda", "auto")
@@ -40,21 +27,6 @@ def test_tilelang_rms_norm_on_detected_accelerator():
     )
 
     torch.testing.assert_close(actual, expected, rtol=0.02, atol=0.07)
-
-
-def test_maca_cpp_silu_mul_on_mxmaca():
-    require_accelerator_tests()
-    if not getattr(torch.version, "maca", None):
-        pytest.skip("requires a MACA-enabled PyTorch build")
-    backends.configure_backend("maca_cpp", "cuda", "maca")
-    gate = torch.randn(2, 3, 2048, device="cuda", dtype=torch.bfloat16)
-    up = torch.randn_like(gate)
-
-    actual = operators.dispatch("silu_mul", gate, up)
-
-    torch.testing.assert_close(
-        actual, torch.nn.functional.silu(gate) * up, rtol=0, atol=0
-    )
 
 
 def test_maca_cpp_rms_norm_on_mxmaca():

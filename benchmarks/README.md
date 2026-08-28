@@ -38,7 +38,7 @@ python infer.py \
   --output-json benchmarks/results/tilelang_maca.json
 ```
 
-构建扩展后，以相同条件运行 MXMACA C++：
+构建扩展后，以相同条件运行 MXMACA 原生实现：
 
 ```shell
 python operators/maca_cpp/setup.py build_ext --inplace
@@ -93,10 +93,10 @@ tokens/s = batch_size * 每条序列生成 token 数 / 平均耗时
 
 | 实现 | 平均延迟 | P50 | P90 | tokens/s |
 |---|---:|---:|---:|---:|
-| PyTorch 基线 | 727.14 ms | 705.70 ms | 745.78 ms | 88.02 |
-| TileLang 示例 | 1001.66 ms | 964.30 ms | 1140.50 ms | 63.89 |
-| MXMACA C++ | 682.44 ms | 646.48 ms | 751.83 ms | 93.78 |
+| PyTorch 基线 | 714.63 ms | 701.06 ms | 781.44 ms | 89.56 |
+| TileLang 示例 | 1211.28 ms | 1269.09 ms | 1309.44 ms | 52.84 |
+| MXMACA 原生 | 745.07 ms | 733.43 ms | 901.15 ms | 85.90 |
 
-三个后端生成的 64 个 token IDs 完全一致。TileLang 示例加速比为 `0.726x`，性能
-提升率为 `-27.41%`；MXMACA C++ 加速比为 `1.065x`，性能提升率为 `6.55%`。两个
+三个后端生成的 64 个 token IDs 完全一致。TileLang 示例加速比为 `0.590x`，性能
+提升率为 `-41.00%`；MXMACA 原生实现加速比为 `0.959x`，性能提升率为 `-4.08%`。两个
 示例都不代表已达到课程的 80% 要求。原始结果及比较 JSON 位于 `results/`。

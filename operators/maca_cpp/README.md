@@ -1,40 +1,39 @@
-# MXMACA C++ 算子实现
+# MXMACA 原生算子实现
 
-本目录提供可以直接构建的 MXMACA C++ 扩展，不再只是接口占位。扩展包含两个 BF16
-device kernel，并通过 PyTorch Python 扩展接入 Llama 推理。
+本目录提供可以直接构建的 MXMACA 扩展，不再只是接口占位。示例只包含一个 BF16
+RMSNorm device kernel，并通过 PyTorch Python 扩展接入 Llama 推理。
 
 ## 已实现算子
 
 ```python
 rms_norm(input, weight, eps) -> output
-silu_mul(gate, up) -> output
 ```
 
 | 算子 | 实现方式 |
 |---|---|
 | `rms_norm` | 每行一个 block，FP32 shared-memory reduction，融合归一化与权重乘法 |
-| `silu_mul` | 单个 elementwise kernel 融合 `SiLU(gate) * up` |
 
 源码结构：
 
 ```text
 operators/maca_cpp/
 ├── __init__.py          registry 注册适配
-├── setup.py             PyTorch CUDAExtension/MACA 构建脚本
+├── setup.py             PyTorch 扩展及原生 mxcc 构建脚本
 └── src/
     ├── bindings.cpp     参数检查、输出分配和 Python 绑定
-    └── kernels.cu       MXMACA device kernel 与 launch 函数
+    └── rms_norm.maca    MXMACA device kernel 与 launch 函数
 ```
 
 ## 环境要求
 
 - MACA Toolkit，环境变量 `MACA_PATH` 指向安装目录；
 - MACA 版 PyTorch，`torch.version.maca` 不为空；
-- PyTorch 的 cu-bridge 能找到 `mxcc`；
+- 可用的 `mxcc` 编译器；
 - 可用的 MetaX GPU。
 
-当前环境使用 `/opt/maca/mxgpu_llvm/bin/mxcc`。MACA 版 PyTorch 的
-`torch.utils.cpp_extension.CUDAExtension` 会通过 cu-bridge 调用该编译器。
+当前环境使用 `/opt/maca/mxgpu_llvm/bin/mxcc`。`setup.py` 直接使用
+`mxcc -x maca -offload-arch native` 编译 `rms_norm.maca`，不再把设备源码作为
+CUDA `.cu` 文件交给兼容层。可通过 `MACA_PATH`、`MXCC` 和 `MACA_ARCH` 覆盖路径及架构。
 
 ## 构建
 
@@ -58,7 +57,6 @@ python -c "from operators.maca_cpp import maca_kernels; print(maca_kernels.__fil
 
 - tensor 必须位于 CUDA 兼容的 MACA device；
 - 当前实现支持连续存储的 BF16 tensor；
-- `silu_mul` 的两个输入必须 shape 和 device 相同；
 - `rms_norm` 的 `weight` 必须是一维，长度等于输入最后一维；
 - 输出保持输入的 shape、dtype 和 device；
 - 不支持的输入会明确报错，不会回退到 PyTorch。
@@ -74,11 +72,10 @@ kernel 在 PyTorch 当前 CUDA/MACA stream 上执行，因此能够遵守模型�
 RUN_ACCELERATOR_TESTS=1 pytest -m accelerator -k maca_cpp
 ```
 
-测试分别将 RMSNorm 和融合 SiLU x Gate 与 PyTorch reference 对齐。当前 MetaX C500
-环境结果为：
+测试将 RMSNorm 与 PyTorch reference 对齐。当前 MetaX C500 环境结果为：
 
 ```text
-2 passed
+1 passed
 ```
 
 ## Llama 端到端验证
