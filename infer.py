@@ -99,6 +99,7 @@ def main(argv=None):
 
     # Optimized submissions may select a JIT target while llama is imported.
     import llama
+    import operators
 
     tokenizer = configure_tokenizer(AutoTokenizer.from_pretrained(model_path))
 
@@ -141,6 +142,7 @@ def main(argv=None):
         ),
         "torch_version": torch.__version__,
         "maca_version": getattr(torch.version, "maca", None),
+        "registered_operators": operators.get_registered_operators(backend.backend),
         "seed": args.seed,
         "batch_size": outputs.size(0),
         "num_input_tokens_per_sequence": num_input_tokens,

@@ -23,6 +23,24 @@ def load_result(path: Path) -> dict:
         return json.load(file)
 
 
+def modified_operators(baseline: dict, candidate: dict) -> dict[str, dict[str, str]]:
+    """Return operators with a native candidate implementation."""
+    baseline_backend = baseline["backend"]
+    candidate_backend = candidate["backend"]
+    baseline_operators = baseline.get("registered_operators", {})
+    candidate_operators = candidate.get("registered_operators", {})
+
+    return {
+        name: {
+            "baseline": baseline_operators.get(name, baseline_backend),
+            "candidate": implementation,
+        }
+        for name, implementation in candidate_operators.items()
+        if implementation == candidate_backend
+        and implementation != baseline_operators.get(name, baseline_backend)
+    }
+
+
 def compare(baseline: dict, candidate: dict) -> dict:
     mismatches = {
         field: {"baseline": baseline.get(field), "candidate": candidate.get(field)}
@@ -45,6 +63,7 @@ def compare(baseline: dict, candidate: dict) -> dict:
         "speedup": speedup,
         "improvement_percent": (speedup - 1) * 100,
         "output_tokens_match": True,
+        "modified_operators": modified_operators(baseline, candidate),
     }
 
 

@@ -11,18 +11,8 @@
 python -m pip install -r requirements.txt
 ```
 
-CPU 冒烟测试（不需要模型）：
-
-```shell
-pytest
-```
-
 需要模型时，先下载 `meta-llama/Llama-3.2-1B` 到 `models/Llama-3.2-1B`，再运行：
 
-```shell
-python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
-  --max-new-tokens 1 --backend torch --device cpu
-```
 
 ## 选择后端
 
@@ -37,15 +27,24 @@ python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
 
 `--target` 可选 `auto`、`cuda`、`maca`。MACA 版 PyTorch 仍使用 `--device cuda`。
 如果后端、target、扩展或某个算子不可用，或者 kernel 运行出错，框架会打印警告并自动使用 PyTorch。
+推理最终输出的 `registered_operators` 会列出当前后端已接入的算子；值为 `torch_fallback`
+表示该算子暂时仍调用 PyTorch reference。
 
-TileLang：
+TileLang测试：
+
+先加载预装的 TileLang 开发环境。脚本会自动发现 `/app/tilelang-metax`：
+
+```shell
+source ./setup_env.sh
+# 自定义源码位置：TILELANG_ROOT=/path/to/tilelang-metax source ./setup_env.sh
+```
 
 ```shell
 python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
   --max-new-tokens 1 --backend tilelang --target maca --device cuda
 ```
 
-MXMACA 原生扩展先构建：
+MXMACA测试：
 
 ```shell
 python operators/maca_cpp/setup.py build_ext --inplace
@@ -55,7 +54,12 @@ python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
 
 ## 学员要改什么
 
-框架已经预置 `rms_norm` 和 `rope` 的调用、注册和测试入口。RoPE 的接口是：
+框架已经预置 `rms_norm` 和 `rope` 的调用、注册和测试入口。当前 TileLang
+`rms_norm` 仅用于演示算子接入流程，并非性能最优实现；学员可以在此基础上继续优化
+线程布局、访存和归约方式。
+
+优化范围不限于现有示例或文档推荐的某一个算子。学员可以根据自己的能力和目标，自行
+选择更多适合的模型算子进行实现和优化。RoPE 的接口是：
 
 ```python
 rope(input, sin_table, cos_table) -> output
@@ -67,20 +71,9 @@ rope(input, sin_table, cos_table) -> output
 
 ## 测试和性能
 
-普通测试：检查 PyTorch reference、算子注册、参数校验和结果比较器，不需要 GPU，日常改完代码先运行。
-
-```shell
-pytest -q
-```
-
-真实加速器测试：在 CUDA/MXMACA 设备上实际编译并运行 TileLang、MXMACA kernel；需要对应硬件和环境变量。
-
-```shell
-RUN_ACCELERATOR_TESTS=1 pytest -m accelerator
-```
-
-正式性能测试统一使用 3 次 warmup、10 次测量，并保持模型、prompt、seed、精度和设备
-完全一致。下面命令假设在 MACA 机器上运行，模型目录是 `models/Llama-3.2-1B`。
+下面提供轻量性能对比，统一生成 16 个 token，使用 1 次 warmup、3 次测量，并保持模型、
+prompt、seed、精度和设备完全一致。该配置用于快速反馈，结果波动较大，不作为正式性能结论。
+下面命令假设在 MACA 机器上运行，模型目录是 `models/Llama-3.2-1B`。
 
 先测 PyTorch 基线：
 
@@ -88,10 +81,10 @@ RUN_ACCELERATOR_TESTS=1 pytest -m accelerator
 python infer.py \
   --model models/Llama-3.2-1B \
   --prompts "Hello" \
-  --max-new-tokens 64 \
+  --max-new-tokens 16 \
   --backend torch --target maca --device cuda \
-  --num-warmup-iterations 3 \
-  --num-profiling-iterations 10 \
+  --num-warmup-iterations 1 \
+  --num-profiling-iterations 3 \
   --seed 0 \
   --output-json benchmarks/results/torch_maca.json
 ```
@@ -102,10 +95,10 @@ python infer.py \
 python infer.py \
   --model models/Llama-3.2-1B \
   --prompts "Hello" \
-  --max-new-tokens 64 \
+  --max-new-tokens 16 \
   --backend tilelang --target maca --device cuda \
-  --num-warmup-iterations 3 \
-  --num-profiling-iterations 10 \
+  --num-warmup-iterations 1 \
+  --num-profiling-iterations 3 \
   --seed 0 \
   --output-json benchmarks/results/tilelang_maca.json
 ```
@@ -117,10 +110,10 @@ python operators/maca_cpp/setup.py build_ext --inplace
 python infer.py \
   --model models/Llama-3.2-1B \
   --prompts "Hello" \
-  --max-new-tokens 64 \
+  --max-new-tokens 16 \
   --backend maca_cpp --target maca --device cuda \
-  --num-warmup-iterations 3 \
-  --num-profiling-iterations 10 \
+  --num-warmup-iterations 1 \
+  --num-profiling-iterations 3 \
   --seed 0 \
   --output-json benchmarks/results/maca_cpp_maca.json
 ```
@@ -133,6 +126,9 @@ python benchmarks/compare_results.py \
   benchmarks/results/tilelang_maca.json \
   --output-json benchmarks/results/torch_vs_tilelang_maca.json
 ```
+
+比较结果中的 `modified_operators` 会列出候选后端相对于基线实际接入的原生算子；
+`torch_fallback` 不会被计为优化算子。
 
 比较 MXMACA 原生实现和 PyTorch：
 

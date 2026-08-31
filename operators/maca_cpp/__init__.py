@@ -33,4 +33,9 @@ def _torch_rope_fallback(*args, **kwargs):
 
 # Once a student exposes maca_kernels.rope, it is picked up automatically. Until then,
 # the already-connected model path remains runnable through the Torch reference.
-register_operator("maca_cpp", "rope", getattr(maca_kernels, "rope", _torch_rope_fallback))
+register_operator(
+    "maca_cpp",
+    "rope",
+    getattr(maca_kernels, "rope", _torch_rope_fallback),
+    fallback_to_torch=not hasattr(maca_kernels, "rope"),
+)

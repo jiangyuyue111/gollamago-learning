@@ -104,4 +104,4 @@ def rope(input: torch.Tensor, sin_table: torch.Tensor, cos_table: torch.Tensor) 
     return torch_rope(input, sin_table, cos_table)
 
 
-register_operator("tilelang", "rope", rope)
+register_operator("tilelang", "rope", rope, fallback_to_torch=True)

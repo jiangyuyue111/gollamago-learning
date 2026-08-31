@@ -30,6 +30,13 @@ def test_torch_rope_matches_half_rotation_reference():
     torch.testing.assert_close(actual, expected)
 
 
+def test_registered_operators_report_backend_implementation():
+    assert operators.get_registered_operators("torch") == {
+        "rms_norm": "torch",
+        "rope": "torch",
+    }
+
+
 def test_missing_operator_reports_no_torch_implementation():
     with pytest.raises(operators.OperatorUnavailableError, match="No torch implementation"):
         operators.get_operator("not_implemented", "torch")
@@ -70,14 +77,26 @@ def test_compare_uses_throughput_ratio():
         "num_input_tokens_per_sequence": 8,
         "num_output_tokens_per_sequence": 4,
         "generated_token_ids": [[1, 2], [3, 4]],
+        "registered_operators": {"rms_norm": "torch", "rope": "torch"},
     }
     result = compare(
         {**shared, "backend": "torch", "tokens_per_second": 100},
-        {**shared, "backend": "tilelang", "tokens_per_second": 180},
+        {
+            **shared,
+            "backend": "tilelang",
+            "registered_operators": {
+                "rms_norm": "tilelang",
+                "rope": "torch_fallback",
+            },
+            "tokens_per_second": 180,
+        },
     )
 
     assert result["speedup"] == 1.8
     assert result["improvement_percent"] == pytest.approx(80)
+    assert result["modified_operators"] == {
+        "rms_norm": {"baseline": "torch", "candidate": "tilelang"}
+    }
 
 
 def test_compare_rejects_different_outputs():

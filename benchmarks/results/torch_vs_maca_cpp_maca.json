@@ -1,9 +1,9 @@
 {
   "baseline_backend": "torch",
   "candidate_backend": "maca_cpp",
-  "baseline_tokens_per_second": 89.55664863549045,
-  "candidate_tokens_per_second": 85.89848365759941,
-  "speedup": 0.9591525025374683,
-  "improvement_percent": -4.084749746253169,
+  "baseline_tokens_per_second": 68.70822755702228,
+  "candidate_tokens_per_second": 102.17592879336883,
+  "speedup": 1.4870988879544456,
+  "improvement_percent": 48.709888795444556,
   "output_tokens_match": true
 }

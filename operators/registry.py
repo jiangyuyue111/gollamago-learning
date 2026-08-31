@@ -17,6 +17,7 @@ _BACKEND_MODULES = {
     "jiuchi": "operators.jiuchi",
 }
 _OPERATORS: dict[tuple[str, str], Operator] = {}
+_TORCH_FALLBACK_OPERATORS: set[tuple[str, str]] = set()
 _LOADED_BACKENDS: set[str] = set()
 
 
@@ -24,11 +25,30 @@ class OperatorUnavailableError(RuntimeError):
     """Raised when a backend does not provide a requested operator."""
 
 
-def register_operator(backend: str, name: str, implementation: Operator) -> None:
+def register_operator(
+    backend: str,
+    name: str,
+    implementation: Operator,
+    *,
+    fallback_to_torch: bool = False,
+) -> None:
     key = (backend, name)
     if key in _OPERATORS:
         raise ValueError(f"Operator {name!r} is already registered for {backend!r}")
     _OPERATORS[key] = implementation
+    if fallback_to_torch:
+        _TORCH_FALLBACK_OPERATORS.add(key)
+
+
+def get_registered_operators(backend: str | None = None) -> dict[str, str]:
+    """Return registered operators and whether each uses this backend or Torch."""
+    selected = backend or backends.get_active_backend(default_to_torch=True).backend
+    _load_backend(selected)
+    return {
+        name: "torch_fallback" if (selected, name) in _TORCH_FALLBACK_OPERATORS else selected
+        for registered_backend, name in sorted(_OPERATORS)
+        if registered_backend == selected
+    }
 
 
 def _load_backend(backend: str) -> None:

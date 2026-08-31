@@ -130,18 +130,6 @@ python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
 `maca_cpp` 强制要求 `--target maca`，MACA 版 PyTorch 仍通过 CUDA 兼容接口使用
 `--device cuda`。编译生成的 `build/` 和 `.so` 是本机产物，不应提交。
 
-## 测试清单
-
-先写 CPU 可运行的 reference/registry 测试，再写标记为 `@pytest.mark.accelerator` 的真实
-加速器测试。显式开启加速器测试：
-
-```shell
-RUN_ACCELERATOR_TESTS=1 pytest -m accelerator -k "tilelang or maca_cpp"
-```
-
-最后使用与 PyTorch 完全相同的模型、prompt、seed、精度、设备和生成长度运行 `infer.py`，
-检查生成 token IDs，再用 `benchmarks/compare_results.py` 比较性能。
-
 ## 常见问题
 
 - 找不到算子：确认模块路径已加入 `_BACKEND_MODULES`，且模块末尾注册了完全相同的名称。
