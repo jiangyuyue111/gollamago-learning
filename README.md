@@ -1,7 +1,25 @@
-# Llama 算子练习仓库
+
+# 算子开发实战营
+
+开始阶段先完成四个 Assignment，再进入下面的 Llama 算子练习项目。
+
+| 任务 | 内容 | 目录 |
+|---|---|---|
+| 1 | 沐曦算力券、`mx-smi` 与 MXMACA 示例 | [`assignment/task1`](assignment/task1/README.md) |
+| 2 | TileLang Add：Tile、尾块和性能测试 | [`assignment/task2_add`](assignment/task2_add/README.md) |
+| 3 | TileLang Softmax：归约、数值稳定性、online softmax | [`assignment/task3_softmax`](assignment/task3_softmax/README.md) |
+| 4 | AI Agent 辅助算子开发、验证与优化 | [`assignment/task4_ai_agent`](assignment/task4_ai_agent/README.md) |
+
+```bash
+cd assignment/task2_add && python -m pytest -q test_add.py && python benchmark_add.py
+cd ../task3_softmax && python -m pytest -q test_softmax.py && python benchmark_softmax.py
+```
+
+完成四个 Assignment 后，继续 Llama 阶段：算子接入 → 正确性验证 → 性能优化 → 端到端评测。
+
+## Llama 算子练习
 
 这是一个小型 Llama 推理项目，用来练习 PyTorch、TileLang 和 MXMACA 算子。
-模型已经接好统一的算子调用流程，学员主要编写 kernel。
 
 ## 快速开始
 
@@ -12,7 +30,6 @@ python -m pip install -r requirements.txt
 ```
 
 需要模型时，先下载 `meta-llama/Llama-3.2-1B` 到 `models/Llama-3.2-1B`，再运行：
-
 
 ## 选择后端
 
