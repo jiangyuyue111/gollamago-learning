@@ -163,31 +163,42 @@ python benchmarks/compare_results.py \
 ## 目录
 
 ```text
-assignment/                       四个入门 Assignment
-assignment/README.md               Assignment 总览与通用要求
-assignment/task1/README.md         沐曦 GPU 与 MXMACA 环境任务
-assignment/task2_add/              TileLang Add 题目
-assignment/task2_add/solution.py   Add kernel 作业入口（含分步提示）
-assignment/task2_add/test_add.py  Add 正确性测试
-assignment/task2_add/benchmark_add.py Add 综合性能测试
-assignment/task3_softmax/          TileLang Softmax 题目
-assignment/task3_softmax/solution.py Softmax kernel 作业入口（含分步提示）
-assignment/task3_softmax/test_softmax.py Softmax 正确性测试
-assignment/task3_softmax/benchmark_softmax.py Softmax 综合性能测试
-assignment/task4_ai_agent/         AI Agent 辅助开发任务
-assignment/task4_ai_agent/prompts.md Prompt 记录模板
-assignment/task4_ai_agent/reflection.md 实践总结模板
-infer.py                         推理入口
-llama.py                         Llama 模型和算子调用点
-backends.py                      后端与 target 配置
-operators/registry.py            算子注册和分发
-operators/torch_ops.py           PyTorch 参考实现
-operators/tilelang_ops.py        TileLang 实现槽位
-operators/maca_cpp/              MXMACA 构建脚本和源码
-operators/INTEGRATION.md         接入教程和推荐练习
-setup_env.sh                     TileLang/MXMACA 环境变量配置
-requirements.txt                 Python 依赖
-benchmarks/compare_results.py    性能结果比较
-benchmarks/results/              性能结果 JSON
-tests/                           单元测试和加速器测试
+.
+├── assignment/                    # 四个入门实战
+│   ├── README.md                  # Assignment 总览与通用要求
+│   ├── task1/                     # 沐曦 GPU 与 MXMACA 环境
+│   │   └── README.md
+│   ├── task2_add/                 # TileLang Add
+│   │   ├── README.md
+│   │   ├── solution.py            # kernel 作业入口（含分步提示）
+│   │   ├── test_add.py            # 正确性测试
+│   │   └── benchmark_add.py       # 综合性能测试
+│   ├── task3_softmax/             # TileLang Softmax
+│   │   ├── README.md
+│   │   ├── solution.py            # kernel 作业入口（含分步提示）
+│   │   ├── test_softmax.py        # 正确性测试
+│   │   └── benchmark_softmax.py   # 综合性能测试
+│   └── task4_ai_agent/            # AI Agent 辅助开发
+│       ├── README.md
+│       ├── prompts.md             # Prompt 记录模板
+│       └── reflection.md          # 实践总结模板
+│
+├── infer.py                       # Llama 推理入口
+├── llama.py                       # 模型与算子调用点
+├── backends.py                    # 后端与 target 配置
+├── setup_env.sh                   # TileLang/MXMACA 环境变量配置
+├── requirements.txt               # Python 依赖
+│
+├── operators/                     # 算子实现
+│   ├── registry.py                # 算子注册与分发
+│   ├── torch_ops.py               # PyTorch 参考实现
+│   ├── tilelang_ops.py            # TileLang 实现槽位
+│   ├── maca_cpp/                  # MXMACA 原生扩展
+│   └── INTEGRATION.md             # 算子接入教程
+│
+├── benchmarks/                    # 性能评测
+│   ├── compare_results.py         # 结果比较工具
+│   └── results/                   # 性能结果 JSON
+│
+└── tests/                         # 单元测试与后端集成测试
 ```
