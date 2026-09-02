@@ -1,0 +1,26 @@
+version: 2
+name: CPU unit tests
+description: Run the repository unit tests without accelerator assignments.
+global:
+  concurrent: 1
+
+workflow:
+  - ref: start
+    name: Start
+    task: start
+
+  - ref: unit_tests
+    name: Unit tests
+    image: docker.jianmuhub.com/library/python:3.11
+    script:
+      - python -m pip install --upgrade pip
+      - python -m pip install -r requirements.txt
+      - python -m pytest -q tests -m "not accelerator"
+    needs:
+      - start
+
+  - ref: end
+    name: End
+    task: end
+    needs:
+      - unit_tests

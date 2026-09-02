@@ -14,8 +14,9 @@ _BACKEND_MODULES = {
     "torch": "operators.torch_ops",
     "tilelang": "operators.tilelang_ops",
     "maca_cpp": "operators.maca_cpp",
-    "jiuchi": "operators.jiuchi",
+    "ninetoothed": "operators.ninetoothed_ops",
 }
+_STRICT_BACKENDS = {"ninetoothed"}
 _OPERATORS: dict[tuple[str, str], Operator] = {}
 _TORCH_FALLBACK_OPERATORS: set[tuple[str, str]] = set()
 _LOADED_BACKENDS: set[str] = set()
@@ -73,6 +74,8 @@ def get_operator(name: str, backend: str | None = None) -> Operator:
     try:
         _load_backend(selected)
     except OperatorUnavailableError as error:
+        if selected in _STRICT_BACKENDS:
+            raise
         warnings.warn(f"Backend {selected!r} is unavailable ({error}); using torch", RuntimeWarning)
         selected = "torch"
         _load_backend(selected)
@@ -80,6 +83,10 @@ def get_operator(name: str, backend: str | None = None) -> Operator:
         return _OPERATORS[(selected, name)]
     except KeyError as error:
         if selected != "torch":
+            if selected in _STRICT_BACKENDS:
+                raise OperatorUnavailableError(
+                    f"Backend {selected!r} does not provide operator {name!r}"
+                ) from error
             warnings.warn(
                 f"Backend {selected!r} does not provide {name!r}; using torch",
                 RuntimeWarning,
@@ -96,7 +103,7 @@ def dispatch(name: str, *args, backend: str | None = None, **kwargs):
     try:
         return implementation(*args, **kwargs)
     except Exception as error:
-        if selected == "torch":
+        if selected == "torch" or selected in _STRICT_BACKENDS:
             raise
         warnings.warn(
             f"Backend {selected!r} failed for {name!r} ({error}); using torch",

@@ -9,7 +9,7 @@ import warnings
 import torch
 
 
-BACKEND_NAMES = ("torch", "tilelang", "maca_cpp", "NineToothed")
+BACKEND_NAMES = ("torch", "tilelang", "maca_cpp", "ninetoothed")
 TARGET_NAMES = ("auto", "cuda", "maca")
 
 
@@ -55,6 +55,10 @@ def configure_backend(
         target = "auto"
 
     torch_device = torch.device(device)
+    if backend == "ninetoothed" and torch_device.type != "cuda":
+        raise RuntimeError(
+            "The ninetoothed backend requires a CUDA-compatible accelerator"
+        )
     if backend != "torch" and torch_device.type != "cuda":
         warnings.warn(
             f"The {backend} backend requires an accelerator; using torch on {torch_device}",
@@ -62,6 +66,10 @@ def configure_backend(
         )
         backend = "torch"
     if torch_device.type == "cuda" and not torch.cuda.is_available():
+        if backend == "ninetoothed":
+            raise RuntimeError(
+                "The ninetoothed backend requires an available accelerator"
+            )
         warnings.warn("CUDA device is unavailable; using torch on CPU", RuntimeWarning)
         backend = "torch"
         torch_device = torch.device("cpu")
@@ -70,6 +78,10 @@ def configure_backend(
     resolved_target = detected_target if target == "auto" else target
 
     if resolved_target == "maca" and not getattr(torch.version, "maca", None):
+        if backend == "ninetoothed":
+            raise RuntimeError(
+                "The maca target requires a MACA-enabled PyTorch build"
+            )
         warnings.warn("MACA PyTorch is unavailable; using torch", RuntimeWarning)
         backend = "torch"
         resolved_target = None
@@ -93,6 +105,15 @@ def configure_backend(
             )
             backend = "torch"
             resolved_target = None
+
+    if backend == "ninetoothed":
+        try:
+            importlib.import_module("ninetoothed")
+        except (ImportError, OSError) as error:
+            raise RuntimeError(
+                "The ninetoothed backend is unavailable; install the optional "
+                "'ninetoothed' package"
+            ) from error
 
     config = BackendConfig(backend, torch_device, resolved_target)
     _active_backend = config

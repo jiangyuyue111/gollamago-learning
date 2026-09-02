@@ -1,8 +1,9 @@
 # 算子接入指南
 
-本仓库为 MXMACA 原生算子和 TileLang 算子预留了同一条接入路径。模型只调用
+本仓库为 NineToothed、MXMACA 原生算子和 TileLang 算子预留了同一条接入路径。模型只调用
 `operators.dispatch()`，后端由命令行参数选择；后端不可用、缺少某个算子或 kernel 运行出错时，
-会提示警告并回退到 PyTorch。
+TileLang/MXMACA 会提示警告并回退到 PyTorch。NineToothed 的依赖或原生 kernel 失败会直接
+报错，只有显式标记的未实现槽位可以使用 PyTorch reference。
 
 ## 接入点总览
 
@@ -15,12 +16,11 @@ infer.py --backend <name> --target <target>
               |
        operators/registry.py
        (按 backend 懒加载模块并查找注册项)
-          |                  |
- operators/tilelang_ops.py  operators/maca_cpp/__init__.py
-          |                  |
-       TileLang JIT       maca_kernels.rms_norm
-                             ^
-                    setup.py + src/*.maca
+          |
+          +-- operators/ninetoothed_ops.py -> NineToothed kernel
+          +-- operators/tilelang_ops.py    -> TileLang JIT
+          +-- operators/maca_cpp/          -> setup.py + src/*.maca
+                                             -> maca_kernels.rms_norm
 ```
 
 当前示例算子签名是：
@@ -50,7 +50,8 @@ return operators.dispatch("rms_norm", input, self.weight, self.eps)
 ```
 
 接入另一个算子时使用同样形式，例如 `operators.dispatch("my_op", input, weight, scale)`。
-不要在模型里直接 import TileLang 或 MXMACA 扩展，否则 `--backend` 将无法切换实现。
+不要在模型里直接 import NineToothed、TileLang 或 MXMACA 扩展，否则 `--backend` 将无法
+切换实现。
 
 ## 第二步：加入后端模块映射
 
@@ -61,8 +62,8 @@ return operators.dispatch("rms_norm", input, self.weight, self.eps)
 _BACKEND_MODULES["my_maca"] = "operators.my_maca"
 ```
 
-模块必须在导入时调用 `register_operator()`。注册表是显式的，重复注册会报错；模块或算子
-不可用时框架会回退到 PyTorch，并打印警告。
+模块必须在导入时调用 `register_operator()`。注册表是显式的，重复注册会报错。当前
+TileLang/MXMACA 模块或算子不可用时会警告并回退到 PyTorch；NineToothed 原生路径会报错。
 
 ## TileLang 接入
 
@@ -88,6 +89,21 @@ python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
 ```
 
 首次调用包含 JIT 编译，性能测试必须先预热。
+
+## NineToothed 接入
+
+当前 `operators/ninetoothed_ops.py` 用一个薄包装把 Llama 的 `[batch, sequence, hidden]`
+输入展平成二维，调用加权 RMSNorm kernel 后恢复原 shape。kernel 来源和更多示例见
+[ninetoothed-examples](https://github.com/InfiniTensor/ninetoothed-examples/tree/e873474d4b4de8e4fa427bf245da4a02512a68b1/ops/ninetoothed/kernels)。
+
+```shell
+python -m pip install ninetoothed
+python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
+  --max-new-tokens 1 --backend ninetoothed --target maca --device cuda
+```
+
+当前 RoPE 明确标记为 `torch_fallback`，可用于端到端 smoke test，但不能计入
+NineToothed 性能结论。选择 NineToothed 后，RMSNorm 编译或执行失败会直接报错。
 
 ## MXMACA 原生算子接入
 
@@ -133,7 +149,8 @@ python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
 ## 常见问题
 
 - 找不到算子：确认模块路径已加入 `_BACKEND_MODULES`，且模块末尾注册了完全相同的名称。
-- 误跑 PyTorch：后端不可用时会自动 fallback；检查警告和输出 JSON 的 `backend` 字段。
+- 误跑 PyTorch：检查警告和输出 JSON 的 `backend`、`registered_operators` 字段；
+  `torch_fallback` 不算原生实现。
 - MACA 编译失败：检查 `MACA_PATH`、`MXCC`、`MACA_ARCH`，并确认 `torch.version.maca` 非空。
 - TileLang 首次很慢：这是 JIT 编译开销；增加 warmup，不要把首次调用作为性能样本。
 

@@ -1,5 +1,5 @@
 
-# 算子开发实战营
+# 九源 x MXMACA 高性能算子开发实战营
 
 开始阶段先完成四个 Assignment，再进入下面的 Llama 算子练习项目。
 
@@ -19,7 +19,8 @@ cd ../task3_softmax && python -m pytest -q test_softmax.py && python benchmark_s
 
 ## Llama 算子练习
 
-这是一个小型 Llama 推理项目，用来练习 PyTorch、TileLang 和 MXMACA 算子。
+这是一个小型 Llama 推理项目，用来练习 PyTorch、NineToothed、TileLang 和
+MXMACA 算子。
 
 ## 快速开始
 
@@ -29,7 +30,19 @@ cd ../task3_softmax && python -m pytest -q test_softmax.py && python benchmark_s
 python -m pip install -r requirements.txt
 ```
 
-需要模型时，先下载 `meta-llama/Llama-3.2-1B` 到 `models/Llama-3.2-1B`，再运行：
+使用 NineToothed 时单独安装可选依赖：
+
+```shell
+python -m pip install ninetoothed
+```
+
+通过 ModelScope 下载模型：
+
+```shell
+python -m pip install modelscope
+modelscope download --model LLM-Research/Llama-3.2-1B \
+  --local_dir models/Llama-3.2-1B
+```
 
 ## 选择后端
 
@@ -40,12 +53,27 @@ python -m pip install -r requirements.txt
 | `torch` | 参考实现和 CPU 基线 |
 | `tilelang` | TileLang kernel |
 | `maca_cpp` | MXMACA `.maca` kernel |
-| `NineToothed` |  |
+| `ninetoothed` | NineToothed kernel；当前示例接入 RMSNorm |
 
 `--target` 可选 `auto`、`cuda`、`maca`。MACA 版 PyTorch 仍使用 `--device cuda`。
-如果后端、target、扩展或某个算子不可用，或者 kernel 运行出错，框架会打印警告并自动使用 PyTorch。
+TileLang 或 MXMACA 后端不可用时，框架会打印警告并自动使用 PyTorch。NineToothed
+依赖缺失或原生 kernel 失败时会直接报错；当前未实现的 RoPE 会明确警告并标记为
+`torch_fallback`。
 推理最终输出的 `registered_operators` 会列出当前后端已接入的算子；值为 `torch_fallback`
 表示该算子暂时仍调用 PyTorch reference。
+
+NineToothed 测试：
+
+```shell
+python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
+  --max-new-tokens 1 --backend ninetoothed --target maca --device cuda
+```
+
+本仓库只保留 Llama 接入所需的薄包装和一个 RMSNorm kernel。安装和入门见
+[NineToothed 文档](https://github.com/InfiniTensor/ninetoothed/blob/b77f930dc6c8b016e09adf33570d55a7bc8376c1/docs/source/installation.rst)、
+[Add/Matmul 基础](https://github.com/InfiniTensor/ninetoothed/blob/b77f930dc6c8b016e09adf33570d55a7bc8376c1/docs/source/basics.rst)；
+更多 RMSNorm、RoPE、SDPA、MM 和 SwiGLU 示例见
+[ninetoothed-examples](https://github.com/InfiniTensor/ninetoothed-examples/tree/e873474d4b4de8e4fa427bf245da4a02512a68b1/ops/ninetoothed/kernels)。
 
 TileLang测试：
 
@@ -82,9 +110,17 @@ python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
 rope(input, sin_table, cos_table) -> output
 ```
 
-学员只需要实现对应的 TileLang 或 MXMACA kernel，不需要修改 `llama.py`、注册表或
-命令行。还没有实现的槽位会暂时使用 PyTorch reference 并打印警告，所以示例可以直接
-跑通；这种状态不能用于性能结论。完整说明见 [`operators/INTEGRATION.md`](operators/INTEGRATION.md)。
+已有槽位中只需实现对应的 NineToothed、TileLang 或 MXMACA kernel，不需要修改
+`llama.py` 或命令行；接入新算子时再补注册项。还没有实现的槽位会暂时使用 PyTorch
+reference 并打印警告，所以示例可以直接跑通；这种状态不能用于性能结论。完整说明见
+[`operators/INTEGRATION.md`](operators/INTEGRATION.md)。
+
+验收保持四条：
+
+1. 从 `ninetoothed`、`tilelang`、`maca_cpp` 中选择两条路线，共完成至少两个不同算子并接入 Llama。
+2. 算子结果通过 PyTorch reference 正确性测试；`torch_fallback` 不算完成。
+3. Llama 推理成功，生成 token IDs 与同条件 PyTorch 基线一致。
+4. 性能只比较相同模型、输入、设备、精度和测试参数下的原始 JSON 结果。
 
 ## 测试和性能
 
@@ -119,6 +155,9 @@ python infer.py \
   --seed 0 \
   --output-json benchmarks/results/tilelang_maca.json
 ```
+
+NineToothed 使用同一组参数，将上面命令的 `--backend` 改为 `ninetoothed`，输出文件改为
+`benchmarks/results/ninetoothed_maca.json`。
 
 MXMACA 原生算子需要先构建扩展：
 
@@ -160,6 +199,9 @@ python benchmarks/compare_results.py \
 拿第一次运行的时间评价性能。如果 RoPE 还在使用临时 PyTorch reference，也不能把该
 结果当作完整后端性能；应先实现对应 kernel。
 
+正式基线需在同一台 C500 上运行上述固定命令，并提交 PyTorch 与候选后端的原始 JSON；
+仓库不预填未经实机复现的性能数字。
+
 ## 目录
 
 ```text
@@ -188,10 +230,13 @@ python benchmarks/compare_results.py \
 ├── backends.py                    # 后端与 target 配置
 ├── setup_env.sh                   # TileLang/MXMACA 环境变量配置
 ├── requirements.txt               # Python 依赖
+├── .devops/unit-tests.yml         # GitLink CPU 单元测试流水线
 │
 ├── operators/                     # 算子实现
 │   ├── registry.py                # 算子注册与分发
 │   ├── torch_ops.py               # PyTorch 参考实现
+│   ├── ninetoothed_ops.py         # NineToothed 薄包装
+│   ├── ninetoothed_kernels/       # NineToothed 示例 kernel
 │   ├── tilelang_ops.py            # TileLang 实现槽位
 │   ├── maca_cpp/                  # MXMACA 原生扩展
 │   └── INTEGRATION.md             # 算子接入教程
