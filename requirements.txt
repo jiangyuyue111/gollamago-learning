@@ -2,6 +2,7 @@ torch
 transformers
 safetensors
 pytest
+huggingface_hub[cli]
 
 # Optional: install ninetoothed for --backend ninetoothed, or TileLang for
 # --backend tilelang. The bundled MACA C++ backend is built separately.

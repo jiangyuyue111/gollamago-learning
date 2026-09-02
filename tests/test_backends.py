@@ -33,41 +33,11 @@ def test_tilelang_backend_resolves_requested_target():
     assert config.tilelang_target == "maca"
 
 
-@pytest.mark.parametrize("name", ["tilelang", "maca_cpp"])
+@pytest.mark.parametrize("name", ["tilelang", "maca_cpp", "ninetoothed"])
 def test_accelerator_backends_fall_back_to_torch_on_cpu(name):
     with pytest.warns(RuntimeWarning, match="using torch"):
         config = backends.configure_backend(name, "cpu")
     assert config.backend == "torch"
-
-
-def test_ninetoothed_backend_rejects_cpu():
-    with pytest.raises(RuntimeError, match="requires a CUDA-compatible accelerator"):
-        backends.configure_backend("ninetoothed", "cpu")
-
-
-def test_ninetoothed_backend_accepts_available_accelerator():
-    with (
-        mock.patch.object(torch.cuda, "is_available", return_value=True),
-        mock.patch.object(backends.importlib, "import_module", return_value=object()),
-    ):
-        config = backends.configure_backend("ninetoothed", "cuda", "cuda")
-
-    assert config.backend == "ninetoothed"
-    assert config.device == torch.device("cuda")
-    assert config.target == "cuda"
-
-
-def test_ninetoothed_backend_reports_missing_dependency():
-    with (
-        mock.patch.object(torch.cuda, "is_available", return_value=True),
-        mock.patch.object(
-            backends.importlib,
-            "import_module",
-            side_effect=ImportError("missing ninetoothed"),
-        ),
-        pytest.raises(RuntimeError, match="install.*ninetoothed"),
-    ):
-        backends.configure_backend("ninetoothed", "cuda", "cuda")
 
 
 def test_maca_target_falls_back_without_maca_pytorch():

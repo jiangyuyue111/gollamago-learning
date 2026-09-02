@@ -2,8 +2,7 @@
 
 本仓库为 NineToothed、MXMACA 原生算子和 TileLang 算子预留了同一条接入路径。模型只调用
 `operators.dispatch()`，后端由命令行参数选择；后端不可用、缺少某个算子或 kernel 运行出错时，
-TileLang/MXMACA 会提示警告并回退到 PyTorch。NineToothed 的依赖或原生 kernel 失败会直接
-报错，只有显式标记的未实现槽位可以使用 PyTorch reference。
+会提示警告并回退到 PyTorch。
 
 ## 接入点总览
 
@@ -62,8 +61,8 @@ return operators.dispatch("rms_norm", input, self.weight, self.eps)
 _BACKEND_MODULES["my_maca"] = "operators.my_maca"
 ```
 
-模块必须在导入时调用 `register_operator()`。注册表是显式的，重复注册会报错。当前
-TileLang/MXMACA 模块或算子不可用时会警告并回退到 PyTorch；NineToothed 原生路径会报错。
+模块必须在导入时调用 `register_operator()`。注册表是显式的，重复注册会报错；模块或算子
+不可用时框架会回退到 PyTorch，并打印警告。
 
 ## TileLang 接入
 
@@ -92,8 +91,18 @@ python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
 
 ## NineToothed 接入
 
-当前 `operators/ninetoothed_ops.py` 用一个薄包装把 Llama 的 `[batch, sequence, hidden]`
-输入展平成二维，调用加权 RMSNorm kernel 后恢复原 shape。kernel 来源和更多示例见
+在 `operators/ninetoothed_kernels/fused_rms_norm.py` 编写 kernel；
+`operators/ninetoothed_ops.py` 中的 wrapper 负责检查输入契约、整理 shape、调用 kernel
+并恢复输出 shape。文件末尾注册：
+
+```python
+register_operator("ninetoothed", "my_op", my_op)
+```
+
+RoPE 不需要学员修改注册表或 `llama.py`：直接把预置的 `rope()` 槽位替换为 kernel
+wrapper，并保持上述签名即可。安装方法见
+[NineToothed 文档](https://github.com/InfiniTensor/ninetoothed/blob/b77f930dc6c8b016e09adf33570d55a7bc8376c1/docs/source/installation.rst)，
+更多算子示例见
 [ninetoothed-examples](https://github.com/InfiniTensor/ninetoothed-examples/tree/e873474d4b4de8e4fa427bf245da4a02512a68b1/ops/ninetoothed/kernels)。
 
 ```shell
@@ -102,8 +111,7 @@ python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
   --max-new-tokens 1 --backend ninetoothed --target maca --device cuda
 ```
 
-当前 RoPE 明确标记为 `torch_fallback`，可用于端到端 smoke test，但不能计入
-NineToothed 性能结论。选择 NineToothed 后，RMSNorm 编译或执行失败会直接报错。
+首次调用包含编译开销，性能测试必须先预热。
 
 ## MXMACA 原生算子接入
 
