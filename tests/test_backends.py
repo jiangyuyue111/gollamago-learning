@@ -33,7 +33,7 @@ def test_tilelang_backend_resolves_requested_target():
     assert config.tilelang_target == "maca"
 
 
-@pytest.mark.parametrize("name", ["tilelang", "maca_cpp", "jiuchi"])
+@pytest.mark.parametrize("name", ["tilelang", "maca_cpp", "ninetoothed"])
 def test_accelerator_backends_fall_back_to_torch_on_cpu(name):
     with pytest.warns(RuntimeWarning, match="using torch"):
         config = backends.configure_backend(name, "cpu")

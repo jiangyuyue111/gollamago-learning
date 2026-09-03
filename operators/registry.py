@@ -14,7 +14,7 @@ _BACKEND_MODULES = {
     "torch": "operators.torch_ops",
     "tilelang": "operators.tilelang_ops",
     "maca_cpp": "operators.maca_cpp",
-    "jiuchi": "operators.jiuchi",
+    "ninetoothed": "operators.ninetoothed_ops",
 }
 _OPERATORS: dict[tuple[str, str], Operator] = {}
 _TORCH_FALLBACK_OPERATORS: set[tuple[str, str]] = set()

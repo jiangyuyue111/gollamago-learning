@@ -43,3 +43,19 @@ def test_maca_cpp_rms_norm_on_mxmaca():
     )
 
     torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+
+
+def test_ninetoothed_rms_norm_on_mxmaca():
+    require_accelerator_tests()
+    if not getattr(torch.version, "maca", None):
+        pytest.skip("requires a MACA-enabled PyTorch build")
+    backends.configure_backend("ninetoothed", "cuda", "maca")
+    input = torch.randn(2, 3, 2048, device="cuda", dtype=torch.bfloat16)
+    weight = torch.randn(2048, device="cuda", dtype=torch.bfloat16)
+
+    actual = operators.dispatch("rms_norm", input, weight, 1e-5)
+    expected = (
+        input * torch.rsqrt(input.pow(2).mean(-1, keepdim=True) + 1e-5) * weight
+    )
+
+    torch.testing.assert_close(actual, expected, rtol=0.02, atol=0.07)

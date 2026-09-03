@@ -9,7 +9,7 @@ import warnings
 import torch
 
 
-BACKEND_NAMES = ("torch", "tilelang", "maca_cpp", "NineToothed")
+BACKEND_NAMES = ("torch", "tilelang", "maca_cpp", "ninetoothed")
 TARGET_NAMES = ("auto", "cuda", "maca")
 
 
@@ -90,6 +90,16 @@ def configure_backend(
             warnings.warn(
                 f"TileLang target {resolved_target!r} is unavailable ({error}); using torch",
                 RuntimeWarning,
+            )
+            backend = "torch"
+            resolved_target = None
+
+    if backend == "ninetoothed":
+        try:
+            importlib.import_module("ninetoothed")
+        except (ImportError, OSError) as error:
+            warnings.warn(
+                f"NineToothed is unavailable ({error}); using torch", RuntimeWarning
             )
             backend = "torch"
             resolved_target = None

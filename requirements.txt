@@ -4,6 +4,7 @@ safetensors
 pytest
 huggingface_hub[cli]
 
-# Optional: required only by --backend tilelang. The bundled MACA C++ backend
-# is built separately; Jiuchi uses a student-provided extension.
+# Optional: install ninetoothed for --backend ninetoothed, or TileLang for
+# --backend tilelang. The bundled MACA C++ backend is built separately.
+# ninetoothed
 # tilelang
