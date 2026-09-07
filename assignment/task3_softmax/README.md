@@ -7,8 +7,8 @@
 运行：
 
 ```bash
-cd /data/go-llama-go/assignment/task3_softmax
-source /data/go-llama-go/setup_env.sh
+cd /data/gollamago/assignment/task3_softmax
+source /data/gollamago/setup_env.sh
 python -m pytest -q test_softmax.py
 python benchmark_softmax.py
 ```
