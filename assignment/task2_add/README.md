@@ -7,8 +7,8 @@
 运行：
 
 ```bash
-cd /data/go-llama-go/assignment/task2_add
-source /data/go-llama-go/setup_env.sh
+cd /data/gollamago/assignment/task2_add
+source /data/gollamago/setup_env.sh
 python -m pytest -q test_add.py
 python benchmark_add.py
 ```
