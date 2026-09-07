@@ -146,8 +146,20 @@ python infer.py \
   --output-json benchmarks/results/tilelang_maca.json
 ```
 
-NineToothed 使用同一组参数，将上面命令的 `--backend` 改为 `ninetoothed`，输出文件改为
-`benchmarks/results/ninetoothed_maca.json`。
+NineToothed 使用同一组参数，运行以下命令并保存结果：
+
+```shell
+python infer.py \
+  --model models/Llama-3.2-1B \
+  --prompts "Hello" \
+  --max-new-tokens 16 \
+  --backend ninetoothed --target maca --device cuda \
+  --num-warmup-iterations 1 \
+  --num-profiling-iterations 3 \
+  --seed 0 \
+  --output-json benchmarks/results/ninetoothed_maca.json
+```
+
 
 MXMACA 原生算子需要先构建扩展：
 
@@ -184,6 +196,16 @@ python benchmarks/compare_results.py \
   benchmarks/results/maca_cpp_maca.json \
   --output-json benchmarks/results/torch_vs_maca_cpp_maca.json
 ```
+
+比较 NineToothed 和 PyTorch：
+
+```shell
+python benchmarks/compare_results.py \
+  benchmarks/results/torch_maca.json \
+  benchmarks/results/ninetoothed_maca.json \
+  --output-json benchmarks/results/torch_vs_ninetoothed_maca.json
+```
+
 
 比较器会检查测试条件和生成的 token IDs。首次 TileLang 调用包含 JIT 编译，不能直接
 拿第一次运行的时间评价性能。如果 RoPE 还在使用临时 PyTorch reference，也不能把该
