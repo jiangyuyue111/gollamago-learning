@@ -33,5 +33,8 @@ python -m pytest -q test_ninetoothed_add.py
 python benchmark_ninetoothed_add.py
 ```
 
+测试使用 `size=98432`；benchmark 对 `2^18` 到 `2^27` 的向量长度比较九齿与
+PyTorch 的耗时。
+
 提交完成后的 `ninetoothed_add.py`、测试与 benchmark 输出，并用 3 到 5 句话记录九齿的
 分块方式和开发体验。

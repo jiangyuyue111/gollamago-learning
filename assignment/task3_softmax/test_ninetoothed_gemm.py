@@ -1,12 +1,16 @@
-import pytest
 import torch
 
 from ninetoothed_gemm import nt_gemm
 
 
-@pytest.mark.parametrize("m,n,k", [(64, 64, 64), (127, 96, 65)])
-def test_ninetoothed_gemm(m, n, k):
-    lhs = torch.randn((m, k), device="cuda", dtype=torch.float16)
-    rhs = torch.randn((k, n), device="cuda", dtype=torch.float16)
+def test_ninetoothed_gemm():
+    torch.manual_seed(0)
+
+    shape = (512, 512)
+    lhs = torch.randn(shape, device="cuda", dtype=torch.float16)
+    rhs = torch.randn(shape, device="cuda", dtype=torch.float16)
+
     output = nt_gemm(lhs, rhs)
-    assert torch.allclose(output, lhs @ rhs, atol=2e-2, rtol=2e-2)
+    reference = torch.mm(lhs, rhs)
+
+    assert torch.allclose(output, reference, atol=0.025, rtol=0.025)

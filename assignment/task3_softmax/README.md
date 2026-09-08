@@ -28,5 +28,5 @@ python -m pytest -q test_ninetoothed_gemm.py
 python benchmark_ninetoothed_gemm.py
 ```
 
-benchmark 使用 `M=N=K=1024`，输出九齿和 `torch.matmul` 的耗时、TFLOPS 与加速比。
-提交完成后的 `ninetoothed_gemm.py`、测试输出和基线性能数据。
+测试使用 `M=N=K=512`；benchmark 对 `M=N=K=2^3` 到 `2^12` 的规模比较九齿与
+`torch.mm` 的耗时。提交完成后的 `ninetoothed_gemm.py`、测试输出和基线性能数据。

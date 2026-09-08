@@ -1,24 +1,28 @@
 import torch
 import triton
 
-from ninetoothed_gemm import BLOCK_SIZE_K, BLOCK_SIZE_M, BLOCK_SIZE_N, nt_gemm
+from ninetoothed_gemm import nt_gemm
 
 
-M = N = K = 1024
-
-def tflops(latency_ms):
-    return 2 * M * N * K / (latency_ms * 1e-3) / 1e12
+SIZES = [2**i for i in range(3, 13)]
 
 
-lhs = torch.randn((M, K), device="cuda", dtype=torch.float16)
-rhs = torch.randn((K, N), device="cuda", dtype=torch.float16)
-output = nt_gemm(lhs, rhs)
-reference = torch.matmul(lhs, rhs)
-assert torch.allclose(output, reference, atol=2e-2, rtol=2e-2)
+if __name__ == "__main__":
+    torch.manual_seed(0)
+    print("M=N=K\tcorrect\tNineToothed(ms)\tPyTorch(ms)")
 
-ninetoothed_ms = triton.testing.do_bench(lambda: nt_gemm(lhs, rhs))
-torch_ms = triton.testing.do_bench(lambda: torch.matmul(lhs, rhs))
-print(f"block={BLOCK_SIZE_M}x{BLOCK_SIZE_N}x{BLOCK_SIZE_K}; correct=PASS")
-print(f"NineToothed: {ninetoothed_ms:.4f} ms, {tflops(ninetoothed_ms):.3f} TFLOPS")
-print(f"PyTorch:     {torch_ms:.4f} ms, {tflops(torch_ms):.3f} TFLOPS")
-print(f"speedup_vs_PyTorch={torch_ms / ninetoothed_ms:.3f}x")
+    for size in SIZES:
+        lhs = torch.randn(
+            (size, size),
+            device="cuda",
+            dtype=torch.float16,
+        )
+        rhs = torch.randn_like(lhs)
+
+        output = nt_gemm(lhs, rhs)
+        reference = torch.mm(lhs, rhs)
+        assert torch.allclose(output, reference, atol=0.025, rtol=0.025)
+
+        ninetoothed_ms = triton.testing.do_bench(lambda: nt_gemm(lhs, rhs))
+        torch_ms = triton.testing.do_bench(lambda: torch.mm(lhs, rhs))
+        print(f"{size}\tPASS\t{ninetoothed_ms:.4f}\t\t{torch_ms:.4f}")
