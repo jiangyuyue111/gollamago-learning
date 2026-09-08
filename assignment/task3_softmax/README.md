@@ -18,9 +18,8 @@ python benchmark_softmax.py
 
 ## 九齿补充任务：GEMM
 
-这部分独立于上面的 TileLang Softmax 作业。在 `ninetoothed_gemm.py` 中实现 `C = A @ B`：
-输入和输出使用 `float16`，中间结果使用 `float32` 累加，固定 block size 为
-`64 x 64 x 64`。
+在 `ninetoothed_gemm.py` 中实现 `C = A @ B`：输入和输出使用 `float16`，中间结果使用
+`float32` 累加，固定 block size 为 `64 x 64 x 64`。
 
 参考：[NineToothed Matrix Multiplication](https://github.com/InfiniTensor/ninetoothed/blob/b77f930dc6c8b016e09adf33570d55a7bc8376c1/docs/source/basics.rst)。
 
@@ -29,9 +28,5 @@ python -m pytest -q test_ninetoothed_gemm.py
 python benchmark_ninetoothed_gemm.py
 ```
 
-benchmark 使用 `M=N=K=1024`，输出九齿和 `torch.matmul` 的平均耗时、TFLOPS 与加速比。
+benchmark 使用 `M=N=K=1024`，输出九齿和 `torch.matmul` 的耗时、TFLOPS 与加速比。
 提交完成后的 `ninetoothed_gemm.py`、测试输出和基线性能数据。
-
-GEMM 与 Softmax 是两个独立练习，不能直接比较性能。需要比较同一算子时，可在任务二中
-分别运行 `benchmark_add.py` 和 `benchmark_ninetoothed_add.py`，再记录两种实现的性能和
-开发体验差异；本补充任务不改动原有 TileLang 作业。

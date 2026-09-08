@@ -22,8 +22,8 @@ python benchmark_add.py
 
 ## 九齿补充任务：Vector Add
 
-这部分独立于上面的 TileLang 作业。在 `ninetoothed_add.py` 中完成 `application()`，实现同样的
-一维 `float16` 向量加法并处理尾块；保持 `BLOCK_SIZE = 1024`，不做自动调优。
+在 `ninetoothed_add.py` 中完成 `application()`，实现一维 `float16` 向量加法并处理尾块；
+保持 `BLOCK_SIZE = 1024`，不做自动调优。
 
 参考：[NineToothed Vector Addition](https://github.com/InfiniTensor/ninetoothed/blob/b77f930dc6c8b016e09adf33570d55a7bc8376c1/docs/source/basics.rst)。
 
