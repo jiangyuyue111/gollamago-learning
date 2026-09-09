@@ -22,8 +22,8 @@ python benchmark_add.py
 
 ## 九齿补充任务：Vector Add
 
-在 `ninetoothed_add.py` 中完成 `application()`，实现一维 `float16` 向量加法并处理尾块；
-保持 `BLOCK_SIZE = 1024`，不做自动调优。
+在 `ninetoothed_add.py` 中完成 `arrangement()` 和 `application()`，实现一维
+`float16` 向量加法并处理尾块。默认使用 `BLOCK_SIZE = 1024`。
 
 参考：[NineToothed Vector Addition](https://github.com/InfiniTensor/ninetoothed/blob/b77f930dc6c8b016e09adf33570d55a7bc8376c1/docs/source/basics.rst)。
 
@@ -31,6 +31,12 @@ python benchmark_add.py
 python -m pip install ninetoothed
 python -m pytest -q test_ninetoothed_add.py
 python benchmark_ninetoothed_add.py
+```
+
+需要尝试自动调优时运行：
+
+```bash
+NINETOOTHED_AUTOTUNE=1 python benchmark_ninetoothed_add.py
 ```
 
 测试使用 `size=98432`；benchmark 对 `2^18` 到 `2^27` 的向量长度比较九齿与

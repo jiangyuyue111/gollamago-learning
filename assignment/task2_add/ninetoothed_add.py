@@ -1,24 +1,28 @@
 """NineToothed vector-add exercise based on the official Basics tutorial."""
 
+import os
+
 import ninetoothed
 import torch
 from ninetoothed import Tensor
 
 
-BLOCK_SIZE = 1024
+AUTOTUNE = os.environ.get("NINETOOTHED_AUTOTUNE") == "1"
+BLOCK_SIZE = (
+    ninetoothed.block_size(lower_bound=256, upper_bound=1024)
+    if AUTOTUNE
+    else 1024
+)
 
 
 def arrangement(lhs, rhs, output):
-    return (
-        lhs.tile((BLOCK_SIZE,)),
-        rhs.tile((BLOCK_SIZE,)),
-        output.tile((BLOCK_SIZE,)),
-    )
+    # TODO(student): tile lhs, rhs, and output with BLOCK_SIZE.
+    raise NotImplementedError("Complete arrangement().")
 
 
 def application(lhs, rhs, output):
-    # TODO(student): replace this copy with tile-wise vector addition.
-    output = lhs
+    # TODO(student): compute the tile-wise vector addition.
+    raise NotImplementedError("Complete application().")
 
 
 _KERNEL = ninetoothed.make(

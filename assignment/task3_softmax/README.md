@@ -18,14 +18,21 @@ python benchmark_softmax.py
 
 ## 九齿补充任务：GEMM
 
-在 `ninetoothed_gemm.py` 中实现 `C = A @ B`：输入和输出使用 `float16`，中间结果使用
-`float32` 累加，固定 block size 为 `64 x 64 x 64`。
+在 `ninetoothed_gemm.py` 中完成 `arrangement()` 和 `application()`，实现
+`C = A @ B`：输入和输出使用 `float16`，中间结果使用 `float32` 累加。默认 block
+size 为 `64 x 64 x 64`。
 
 参考：[NineToothed Matrix Multiplication](https://github.com/InfiniTensor/ninetoothed/blob/b77f930dc6c8b016e09adf33570d55a7bc8376c1/docs/source/basics.rst)。
 
 ```bash
 python -m pytest -q test_ninetoothed_gemm.py
 python benchmark_ninetoothed_gemm.py
+```
+
+需要尝试自动调优时运行：
+
+```bash
+NINETOOTHED_AUTOTUNE=1 python benchmark_ninetoothed_gemm.py
 ```
 
 测试使用 `M=N=K=512`；benchmark 对 `M=N=K=2^3` 到 `2^12` 的规模比较九齿与
