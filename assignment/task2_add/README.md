@@ -7,8 +7,9 @@
 运行：
 
 ```bash
-cd /data/gollamago/assignment/task2_add
-source /data/gollamago/setup_env.sh
+cd /data/go-llama-go/assignment/task2_add
+source /data/go-llama-go/setup_env.sh
+python "$TILELANG_ROOT/examples/quickstart.py"
 python -m pytest -q test_add.py
 python benchmark_add.py
 ```
@@ -18,3 +19,28 @@ python benchmark_add.py
 提交:
 
 运行 `python benchmark_add.py` 后的终端结果截图
+
+## 九齿补充任务：Vector Add
+
+在 `ninetoothed_add.py` 中完成 `arrangement()` 和 `application()`，实现一维
+`float16` 向量加法并处理尾块。默认使用 `BLOCK_SIZE = 1024`。
+
+参考：[NineToothed Vector Addition](https://github.com/InfiniTensor/ninetoothed/blob/b77f930dc6c8b016e09adf33570d55a7bc8376c1/docs/source/basics.rst)。
+
+```bash
+python -m pip install ninetoothed
+python -m pytest -q test_ninetoothed_add.py
+python benchmark_ninetoothed_add.py
+```
+
+需要尝试自动调优时运行：
+
+```bash
+NINETOOTHED_AUTOTUNE=1 python benchmark_ninetoothed_add.py
+```
+
+测试使用 `size=98432`；benchmark 对 `2^18` 到 `2^27` 的向量长度比较九齿与
+PyTorch 的耗时。
+
+提交完成后的 `ninetoothed_add.py`、测试与 benchmark 输出，并用 3 到 5 句话记录九齿的
+分块方式和开发体验。
