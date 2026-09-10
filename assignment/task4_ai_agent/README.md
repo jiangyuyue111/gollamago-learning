@@ -20,5 +20,5 @@
 
 ## 提交
 
-最终prompts.md文件的截图展示
-
+最终prompts.md文件或截图展示
+以及reflection.md 的笔记
