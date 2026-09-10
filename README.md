@@ -1,18 +1,29 @@
 
 # 多范式算子开发实战营
 
+模力方舟使用算力券租用沐曦C500的镜像选择：`TileLang / 0.1.9 / Python 3.12 / maca 3.3.0.4`
+
+![镜像选择](image.png)
+
 开始阶段先完成四个 Assignment，再进入下面的 Llama 算子练习项目。
 
 | 任务 | 内容 | 目录 |
 |---|---|---|
-| 1 | 沐曦算力券、`mx-smi` 与 MXMACA 示例 | [`assignment/task1`](assignment/task1/README.md) |
-| 2 | TileLang Add：Tile、尾块和性能测试 | [`assignment/task2_add`](assignment/task2_add/README.md) |
-| 3 | TileLang Softmax：归约、数值稳定性、online softmax | [`assignment/task3_softmax`](assignment/task3_softmax/README.md) |
-| 4 | AI Agent 辅助算子开发、验证与优化 | [`assignment/task4_ai_agent`](assignment/task4_ai_agent/README.md) |
+| 1 | 沐曦算力券、`mx-smi` | [`assignment/task1`](assignment/task1/README.md) |
+| 2 | TileLang Add 与 NineToothed Vector Add：Tile、尾块和性能测试 | [`assignment/task2`](assignment/task2/README.md) |
+| 3 | TileLang Softmax 与 NineToothed GEMM：归约、数值稳定性和矩阵乘 | [`assignment/task3`](assignment/task3/README.md) |
+| 4 | AI Agent 辅助算子开发、验证与优化 | [`assignment/task4`](assignment/task4/README.md) |
 
 ```bash
-cd assignment/task2_add && python -m pytest -q test_add.py && python benchmark_add.py
-cd ../task3_softmax && python -m pytest -q test_softmax.py && python benchmark_softmax.py
+cd assignment/task2
+python -m pytest -q test_add.py test_ninetoothed_add.py
+python benchmark_add.py
+python benchmark_ninetoothed_add.py
+
+cd ../task3
+python -m pytest -q test_softmax.py test_ninetoothed_gemm.py
+python benchmark_softmax.py
+python benchmark_ninetoothed_gemm.py
 ```
 
 完成四个 Assignment 后，继续 Llama 阶段：算子接入 → 正确性验证 → 性能优化 → 端到端评测。
@@ -108,8 +119,7 @@ python infer.py --model models/Llama-3.2-1B --prompts "Hello" \
 rope(input, sin_table, cos_table) -> output
 ```
 
-学员只需要实现对应的 NineToothed、TileLang 或 MXMACA kernel，不需要修改 `llama.py`、注册表或
-命令行。还没有实现的槽位会暂时使用 PyTorch reference 并打印警告，所以示例可以直接
+学员只需要实现对应的 NineToothed、TileLang 或 MXMACA kernel，还没有实现的槽位会暂时使用 PyTorch reference 并打印警告，所以示例可以直接
 跑通；这种状态不能用于性能结论。完整说明见 [`operators/INTEGRATION.md`](operators/INTEGRATION.md)。
 
 ## 测试和性能
@@ -194,12 +204,8 @@ python benchmarks/compare_results.py \
   --output-json benchmarks/results/torch_vs_ninetoothed_maca.json
 ```
 
-比较器会校验测试条件和生成的 token IDs，并输出吞吐 speedup、性能变化比例及实际替换
-的算子。当前九齿示例的 RoPE 仍是 `torch_fallback`，因此这是当前接入范围内的端到端
-比较。
 
-比较结果中的 `modified_operators` 会列出候选后端相对于基线实际接入的原生算子；
-`torch_fallback` 不会被计为优化算子。
+
 
 比较 MXMACA 原生实现和 PyTorch：
 
@@ -210,7 +216,9 @@ python benchmarks/compare_results.py \
   --output-json benchmarks/results/torch_vs_maca_cpp_maca.json
 ```
 
-比较器会检查测试条件和生成的 token IDs。首次 TileLang 调用包含 JIT 编译，不能直接
+比较器会校验测试条件和生成的 token IDs，并输出吞吐 speedup、性能变化比例及实际替换
+的算子。
+ TileLang 调用包含 JIT 编译，不要直接
 拿第一次运行的时间评价性能。如果 RoPE 还在使用临时 PyTorch reference，也不能把该
 结果当作完整后端性能；应先实现对应 kernel。
 
@@ -222,17 +230,23 @@ python benchmarks/compare_results.py \
 │   ├── README.md                  # Assignment 总览与通用要求
 │   ├── task1/                     # 沐曦 GPU 与 MXMACA 环境
 │   │   └── README.md
-│   ├── task2_add/                 # TileLang Add
+│   ├── task2/                     # TileLang Add 与 NineToothed Vector Add
 │   │   ├── README.md
-│   │   ├── solution.py            # kernel 作业入口（含分步提示）
-│   │   ├── test_add.py            # 正确性测试
-│   │   └── benchmark_add.py       # 综合性能测试
-│   ├── task3_softmax/             # TileLang Softmax
+│   │   ├── solution.py            # TileLang kernel 作业入口
+│   │   ├── ninetoothed_add.py     # NineToothed kernel 作业入口
+│   │   ├── test_add.py            # TileLang 正确性测试
+│   │   ├── test_ninetoothed_add.py # NineToothed 正确性测试
+│   │   ├── benchmark_add.py       # TileLang 综合性能测试
+│   │   └── benchmark_ninetoothed_add.py # NineToothed 性能测试
+│   ├── task3/                     # TileLang Softmax 与 NineToothed GEMM
 │   │   ├── README.md
-│   │   ├── solution.py            # kernel 作业入口（含分步提示）
-│   │   ├── test_softmax.py        # 正确性测试
-│   │   └── benchmark_softmax.py   # 综合性能测试
-│   └── task4_ai_agent/            # AI Agent 辅助开发
+│   │   ├── solution.py            # TileLang kernel 作业入口
+│   │   ├── ninetoothed_gemm.py    # NineToothed kernel 作业入口
+│   │   ├── test_softmax.py        # TileLang 正确性测试
+│   │   ├── test_ninetoothed_gemm.py # NineToothed 正确性测试
+│   │   ├── benchmark_softmax.py   # TileLang 综合性能测试
+│   │   └── benchmark_ninetoothed_gemm.py # NineToothed 性能测试
+│   └── task4/                     # AI Agent 辅助开发
 │       ├── README.md
 │       ├── prompts.md             # Prompt 记录模板
 │       └── reflection.md          # 实践总结模板
