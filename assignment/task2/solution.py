@@ -13,4 +13,16 @@ def tl_add_1d(A, B, BLOCK_N: int):
     # Step 4: 判断 index < N，保护尾块越界。
     # Step 5: 写回 C[index] = A[index] + B[index]。
     # TODO: 完成 kernel 实现。
-    raise NotImplementedError("请根据步骤实现 Add")
+
+    num_blocks = T.ceildiv(N, BLOCK_N)
+
+    with T.Kernel(num_blocks, threads=256) as pid:
+        base_idx = pid * BLOCK_N
+
+        for offset in T.Parallel(BLOCK_N):
+            index = base_idx + offset
+
+            if index < N:
+                C[index] = A[index] + B[index]
+
+    return C
